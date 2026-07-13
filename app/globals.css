@@ -1,0 +1,183 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-lato), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-lato), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Sopheon / Accolade Projects product palette — clean white chrome, navy
+     primary buttons, blue accents (links + toggles), cream active states in the
+     side nav. Consistent across customers/projects (white-label colour comes
+     from data, not the app chrome). */
+  --background: #ffffff;
+  --foreground: #1b2733;
+  --card: #ffffff;
+  --card-foreground: #1b2733;
+  --popover: #ffffff;
+  --popover-foreground: #1b2733;
+  --primary: #1f2d3d;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f4;
+  --secondary-foreground: #1b2733;
+  --muted: #f2f2f2;
+  --muted-foreground: #5b6b7b;
+  --accent: #eef1f4;
+  --accent-foreground: #1b2733;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #e3e7eb;
+  --input: #d7dde3;
+  --ring: #267ea1;
+
+  /* Brand accents — toggles, links, highlights. Exact Accolade palette:
+     blue #267EA1, soft blue #BDD7E3, cream #FFF5DC, dark text #515151. */
+  --brand-blue: #267ea1;
+  --brand-blue-soft: #bdd7e3;
+  --brand-navy: #1f2d3d;
+  --link: #267ea1;
+
+  /* Side-nav cream active state (matches Accolade left nav) */
+  --nav-active: #fff5dc;
+  --nav-active-border: #e3c24a;
+  --nav-active-hover: #fffaf0;
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.5rem;
+
+  /* Side nav — light (was dark slate) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1b2733;
+  --sidebar-primary: #1f2d3d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f5f7;
+  --sidebar-accent-foreground: #1b2733;
+  --sidebar-border: #e3e7eb;
+  --sidebar-ring: #267ea1;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Native form controls (radios, checkboxes, time/date pickers) use the brand
+       blue instead of the browser default. */
+    accent-color: var(--brand-blue);
+  }
+  html {
+    @apply font-sans;
+  }
+}
+/* ── SuprSend workflow canvas (wf-engine.js) ── */
+.wf-canvas{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;padding:30px 40px;user-select:none;}
+.wf-edges{position:absolute;top:0;left:0;overflow:visible;pointer-events:none;z-index:0;}
+.wf-edges path{fill:none;stroke:rgb(177,177,183);stroke-width:1;}
+.wf-grid{position:relative;z-index:1;}
+.wf-node{width:250px;background:#fff;border:1px solid rgb(203,213,225);border-radius:6px;overflow:hidden;}
+.wf-node-head{display:flex;align-items:center;gap:10px;padding:12px;}
+.wf-ic{flex:none;width:18px;height:18px;display:inline-flex;}
+.wf-ic svg{width:18px;height:18px;display:block;}
+.wf-title{font-size:14px;font-weight:500;letter-spacing:-0.1px;color:rgb(15,23,41);line-height:1.2;}
+.wf-sub{padding:10px 12px 12px;border-top:1px solid rgb(203,213,225);font-size:12px;color:#64748b;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wf-sub2{border-top:none;padding-top:0;color:#94a3b8;font-size:11px;}
+.wf-node.t-exit{width:auto;}
+.wf-node.t-exit .wf-sub{display:none;}
+.wf-node.t-exit .wf-node-head{padding:10px 16px;}
+.wf-elabel{position:absolute;z-index:2;transform:translate(-50%,-50%);white-space:nowrap;font-size:11px;font-weight:500;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:3px 9px;pointer-events:none;}
+
+/* ── In-app inbox bell — vertically center it with the other header icons.
+   SuprSend's emotion CSS makes .ss-feed-container inline-block and adds a 12px
+   margin-top on the bell, so it sits low. Header-scoped rules (higher specificity
+   than the single emotion class) make the container fill the header row and center
+   the bell, and zero the stray margin. ── */
+header .ss-feed-container {
+  display: inline-flex !important;
+  align-items: center;
+  height: 3.5rem; /* matches the h-14 header row */
+}
+header .ss-feed-bell-container { margin-top: 0 !important; }

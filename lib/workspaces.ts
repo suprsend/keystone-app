@@ -1,0 +1,61 @@
+// Workspace registry — one workspace per CUSTOMER (the companies that run
+// Accolade). This is Wellspring's model: each customer is its own isolated SuprSend
+// workspace with its own keys. The account-level Service Token selects the
+// workspace by URL path on the Management API; the per-workspace key/secret +
+// signing key drive the node SDK and the embedded editor.
+//
+// Projects live INSIDE a workspace as tenants — see lib/tenants.ts. The app
+// switches BOTH the workspace (customer) and the tenant (project).
+//
+// To add a customer: add an entry here, add the matching env vars (prefix =
+// `envPrefix(ws)` in lib/server/workspace.ts), and add its projects in
+// lib/tenants.ts. Brand colour/logo here is the render-time default.
+
+export type WorkspaceSlug = "wellspring-honeywell" | "wellspring-hershey";
+
+export interface Workspace {
+  slug: WorkspaceSlug;
+  /** Short customer name shown in the switcher. */
+  label: string;
+  /** Full legal name for headers / empty states. */
+  fullName: string;
+  /** Single-letter mark for the avatar tile (fallback when the logo can't load). */
+  initial: string;
+  /** Customer logo (served from /public/brands). */
+  logo: string;
+  /** Customer brand accent — the workspace-level identity colour. */
+  accent: string;
+  /** Foreground that reads on the accent. */
+  accentForeground: string;
+}
+
+export const WORKSPACES: Workspace[] = [
+  {
+    slug: "wellspring-honeywell",
+    label: "Honeywell",
+    fullName: "Honeywell International",
+    initial: "Hw",
+    logo: "/brands/honeywell.png",
+    accent: "#EE3124",
+    accentForeground: "#ffffff",
+  },
+  {
+    slug: "wellspring-hershey",
+    label: "Hershey",
+    fullName: "The Hershey Company",
+    initial: "H",
+    logo: "/brands/hershey.svg",
+    accent: "#6F4E37",
+    accentForeground: "#ffffff",
+  },
+];
+
+export const DEFAULT_WORKSPACE: WorkspaceSlug = "wellspring-honeywell";
+
+export function getWorkspace(slug?: string | null): Workspace {
+  return WORKSPACES.find((w) => w.slug === slug) ?? WORKSPACES[0];
+}
+
+export function isWorkspaceSlug(value?: string | null): value is WorkspaceSlug {
+  return WORKSPACES.some((w) => w.slug === value);
+}
