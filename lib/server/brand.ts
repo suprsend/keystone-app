@@ -4,7 +4,6 @@
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client, hasWorkspaceKeys } from "@/lib/server/workspace";
-import { mockBrand } from "@/lib/mock";
 import type { TenantId } from "@/lib/tenants";
 
 // The social links we surface for editing (the tenant stores more keys; we merge
@@ -33,7 +32,7 @@ interface RawTenant {
 }
 
 export async function getBrand(ws: Workspace, tenantId: string): Promise<Brand> {
-  if (!hasWorkspaceKeys(ws)) return mockBrand(tenantId as TenantId);
+  if (!hasWorkspaceKeys(ws)) return { tenantName: "", logo: "", primaryColor: "", secondaryColor: "", tertiaryColor: "", socialLinks: {}, properties: {} };
   const t = (await client(ws).tenants.get(tenantId)) as RawTenant;
   const sl = t.social_links ?? {};
   const socialLinks: Record<string, string> = {};

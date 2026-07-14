@@ -11,7 +11,6 @@ import "server-only";
 import jwt from "jsonwebtoken";
 import { getWorkspaceSecrets, publicEnvPrefix, hasWorkspaceKeys } from "@/lib/server/workspace";
 import { getPreferenceConfig } from "@/lib/server/preference-config";
-import { mockUserCategories } from "@/lib/mock";
 import type { Workspace } from "@/lib/workspaces";
 
 const HOST = (process.env.SUPRSEND_HOST || "https://hub.suprsend.com/").replace(/\/$/, "");
@@ -52,7 +51,7 @@ export interface UserCategory {
 }
 
 export async function getUserCategories(ws: Workspace, distinctId: string, tenantId: string): Promise<UserCategory[]> {
-  if (!hasWorkspaceKeys(ws)) return mockUserCategories(ws.slug);
+  if (!hasWorkspaceKeys(ws)) return [];
   const res = await fetch(
     `${HOST}/v2/subscriber/${encodeURIComponent(distinctId)}/category/?tenant_id=${encodeURIComponent(tenantId)}&show_opt_out_channels=true`,
     { headers: headers(ws, distinctId, tenantId), cache: "no-store" },

@@ -11,7 +11,6 @@ import "server-only";
 import type { WorkspaceSlug } from "@/lib/workspaces";
 import { getWorkspace } from "@/lib/workspaces";
 import { hasWorkspaceKeys, envPrefix } from "@/lib/server/workspace";
-import { mockPreferenceConfig } from "@/lib/mock";
 import type { DigestOption } from "@/components/preferences/digest-frequency";
 import type { Condition } from "@/components/admin/conditions-cell";
 import {
@@ -119,7 +118,7 @@ async function readDoc(ws: WorkspaceSlug): Promise<PrefDoc> {
 export async function getPreferenceConfig(
   ws: WorkspaceSlug,
 ): Promise<PrefCategory[]> {
-  if (!hasWorkspaceKeys(getWorkspace(ws))) return mockPreferenceConfig(ws);
+  if (!hasWorkspaceKeys(getWorkspace(ws))) return [];
   const doc = await readDoc(ws);
   const out: PrefCategory[] = [];
   for (const root of doc.root_categories ?? []) {

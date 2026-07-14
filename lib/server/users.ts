@@ -4,7 +4,6 @@
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client, hasWorkspaceKeys, getActiveTenant } from "@/lib/server/workspace";
-import { mockUsers, mockUser, mockUserSubscriptions } from "@/lib/mock";
 
 // Event emitted when a new employee is added. An event-triggered workflow
 // (`event-employee-onboarding`, trigger_type:"event") listens for it and fires
@@ -52,7 +51,7 @@ function shape(u: RawUser): WorkUser {
 }
 
 export async function listUsers(ws: Workspace): Promise<WorkUser[]> {
-  if (!hasWorkspaceKeys(ws)) return mockUsers(await getActiveTenant());
+  if (!hasWorkspaceKeys(ws)) return [];
   const res = (await client(ws).users.list({ limit: 100 })) as { results?: RawUser[] };
   return (res.results ?? [])
     .map(shape)
@@ -60,7 +59,7 @@ export async function listUsers(ws: Workspace): Promise<WorkUser[]> {
 }
 
 export async function getUser(ws: Workspace, distinctId: string): Promise<WorkUser | null> {
-  if (!hasWorkspaceKeys(ws)) return mockUser(await getActiveTenant(), distinctId);
+  if (!hasWorkspaceKeys(ws)) return null;
   try {
     const u = (await client(ws).users.get(distinctId)) as RawUser;
     return u?.distinct_id ? shape(u) : null;
@@ -296,7 +295,7 @@ export interface UserSubscriptions {
 }
 
 export async function getUserSubscriptions(ws: Workspace, distinctId: string): Promise<UserSubscriptions> {
-  if (!hasWorkspaceKeys(ws)) return mockUserSubscriptions();
+  if (!hasWorkspaceKeys(ws)) return { teams: [], lists: [] };
   const c = client(ws);
   type ObjRes = { results?: { object?: { id?: string; object_type?: string; properties?: { name?: string } } }[] };
   type ListRes = { results?: { list?: { list_id?: string; list_name?: string } }[] };

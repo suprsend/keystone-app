@@ -7,7 +7,6 @@
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client, hasWorkspaceKeys, getActiveTenant } from "@/lib/server/workspace";
-import { mockMessages } from "@/lib/mock";
 import type { TenantId } from "@/lib/tenants";
 
 // ───────────────────────── Normalized record ─────────────────────────
@@ -133,12 +132,7 @@ async function fetchAll(ws: Workspace): Promise<MessageRecord[]> {
 // Both Executions views (grouped runs + flat log) are derived on the client from
 // this one flat list — same pattern as the analytics aggregate. Newest first.
 export async function listMessageRecords(ws: Workspace, tenantId?: string): Promise<MessageRecord[]> {
-  if (!hasWorkspaceKeys(ws)) {
-    const tenant = (tenantId as TenantId) ?? (await getActiveTenant());
-    const mock = mockMessages(ws.slug, tenant);
-    const scoped = tenantId ? mock.filter((m) => m.tenantId === tenantId) : mock;
-    return scoped.sort((a, b) => lastActivity(b) - lastActivity(a));
-  }
+  if (!hasWorkspaceKeys(ws)) return [];
   const messages = await fetchAll(ws);
   // Tenant isolation — Logs + Analytics only show the active tenant's messages.
   const scoped = tenantId ? messages.filter((m) => m.tenantId === tenantId) : messages;

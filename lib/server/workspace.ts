@@ -42,7 +42,7 @@ export function publicEnvPrefix(ws: Workspace): string {
   return `NEXT_PUBLIC_SUPRSEND_${ws.slug.replace(/-/g, "_").toUpperCase()}`;
 }
 
-/** True when this workspace has its SuprSend keys configured (else we serve mock data). */
+/** True when this workspace has its SuprSend keys configured (else reads return empty / honest "unconfigured" states). */
 export function hasWorkspaceKeys(ws: Workspace): boolean {
   const prefix = envPrefix(ws);
   return Boolean(process.env[`${prefix}_WORKSPACE_KEY`] && process.env[`${prefix}_WORKSPACE_SECRET`]);

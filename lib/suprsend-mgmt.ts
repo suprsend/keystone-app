@@ -5,11 +5,10 @@ import "server-only";
 import type { WorkspaceSlug } from "@/lib/workspaces";
 import { getWorkspace } from "@/lib/workspaces";
 import { hasWorkspaceKeys, envPrefix } from "@/lib/server/workspace";
-import { mockTemplates, mockTemplate, mockWorkflows, mockWorkflow } from "@/lib/mock";
 
 const MGMNT = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com/").replace(/\/$/, "");
 
-/** True when this workspace has no SuprSend keys → serve mock list data. */
+/** True when this workspace has no SuprSend keys → return empty list data (no fake fallback). */
 function isMock(ws: WorkspaceSlug): boolean {
   return !hasWorkspaceKeys(getWorkspace(ws));
 }
@@ -262,17 +261,14 @@ const CHANNEL_CONTENT: Record<TemplateChannel, (d: TemplateDraft) => object | nu
 };
 
 export async function listTemplates(ws: WorkspaceSlug): Promise<TemplateSummary[]> {
-  if (isMock(ws)) return mockTemplates();
+  if (isMock(ws)) return [];
   const r = await call<{ results?: TemplateSummary[] }>(ws, "v2", "template/?limit=100");
   return r.ok ? r.body.results ?? [] : [];
 }
 
 export function getTemplate(ws: WorkspaceSlug, slug: string): Promise<MgmtResult<TemplateSummary>> {
   if (isMock(ws)) {
-    const t = mockTemplate(slug);
-    return Promise.resolve(
-      t ? { ok: true, status: 200, body: t } : { ok: false, status: 404, body: {} as TemplateSummary },
-    );
+    return Promise.resolve({ ok: false, status: 404, body: {} as TemplateSummary });
   }
   return call<TemplateSummary>(ws, "v2", `template/${slug}/`);
 }
@@ -482,7 +478,7 @@ export interface WorkflowSummary {
 // we take the full list from draft and mark a workflow "active" (Live) when it also
 // has a published (live) version — matching SuprSend's Live/Draft column exactly.
 export async function listWorkflows(ws: WorkspaceSlug): Promise<WorkflowSummary[]> {
-  if (isMock(ws)) return mockWorkflows();
+  if (isMock(ws)) return [];
   const [all, live] = await Promise.all([
     call<{ results?: WorkflowSummary[] }>(ws, "v1", "workflow/?mode=draft&limit=100"),
     call<{ results?: WorkflowSummary[] }>(ws, "v1", "workflow/?mode=live&limit=100"),
@@ -496,10 +492,7 @@ export async function listWorkflows(ws: WorkspaceSlug): Promise<WorkflowSummary[
 // that have never been published.
 export async function getWorkflow(ws: WorkspaceSlug, slug: string): Promise<MgmtResult> {
   if (isMock(ws)) {
-    const w = mockWorkflow(slug);
-    return Promise.resolve(
-      w ? { ok: true, status: 200, body: w } : { ok: false, status: 404, body: {} },
-    );
+    return Promise.resolve({ ok: false, status: 404, body: {} });
   }
   const live = await call(ws, "v1", `workflow/${slug}/?mode=live`);
   if (live.ok) return live;

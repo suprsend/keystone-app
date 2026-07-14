@@ -8,7 +8,6 @@ import { listUsers } from "@/lib/server/users";
 import { getUserCategories } from "@/lib/server/subscriber-prefs";
 import { getPreferenceConfig } from "@/lib/server/preference-config";
 import { hasWorkspaceKeys } from "@/lib/server/workspace";
-import { mockOptOutSummary } from "@/lib/mock";
 import type { TenantId } from "@/lib/tenants";
 import type { Workspace } from "@/lib/workspaces";
 
@@ -34,7 +33,7 @@ export interface OptOutSummary {
 }
 
 export async function getOptOutSummary(ws: Workspace, tenantId: string): Promise<OptOutSummary> {
-  if (!hasWorkspaceKeys(ws)) return mockOptOutSummary(ws.slug, tenantId as TenantId);
+  if (!hasWorkspaceKeys(ws)) return { totalUsers: 0, usersOptedOut: 0, usersDefaultOff: 0, rows: [] };
   const emps = await listUsers(ws);
   const perEmployee = await Promise.all(emps.map((e) => getUserCategories(ws, e.distinctId, tenantId).catch(() => [])));
 
