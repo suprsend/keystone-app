@@ -22,8 +22,8 @@ const Suprsend = pkg.Suprsend ?? pkg.default?.Suprsend ?? pkg.default ?? pkg;
 const SAFE_EMAIL_USER = process.env.SAFE_TEST_EMAIL_USER || "nikita";
 const SAFE_EMAIL_DOMAIN = process.env.SAFE_TEST_EMAIL_DOMAIN || "suprsend.com";
 const safeMail = (local) => `${SAFE_EMAIL_USER}+${local}@${SAFE_EMAIL_DOMAIN}`;
-const HON = "honeywell";
-const HSY = "hershey";
+const HON = "acme";
+const HSY = "globex";
 
 // Object type for projects (project = object, for recipient fan-out + roles).
 const OBJECT_TYPE = "project";
@@ -74,14 +74,14 @@ function team(_label, rows) {
 // Each tenant (= project) carries its team; users are the union of all teams.
 const WORKSPACES = [
   {
-    slug: "wellspring-honeywell",
-    prefix: "SUPRSEND_WELLSPRING_HONEYWELL",
+    slug: "acme",
+    prefix: "SUPRSEND_ACME",
     // Workspace default brand (SuprSend `default` tenant) — the account-wide
     // {{$brand.*}} fallback shown in Admin → Branding. The customer's own brand.
     defaultBrand: { name: "Acme", primary: "#2563EB", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
       {
-        id: "honeywell-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81",
+        id: "acme-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81",
         members: team(HON, [
           ["u_dana_carter", "Dana Carter", "Project Manager"],
           ["u_marcus_hale", "Marcus Hale", "Project Sponsor"],
@@ -92,7 +92,7 @@ const WORKSPACES = [
         ]),
       },
       {
-        id: "honeywell-bms", name: "Building Technologies — Smart Controls v4", primary: "#00857A",
+        id: "acme-bms", name: "Building Technologies — Smart Controls v4", primary: "#00857A",
         members: team(HON, [
           ["u_grace_miller", "Grace Miller", "Project Manager"],
           ["u_tom_freed", "Tom Freed", "Project Sponsor"],
@@ -105,12 +105,12 @@ const WORKSPACES = [
     ],
   },
   {
-    slug: "wellspring-hershey",
-    prefix: "SUPRSEND_WELLSPRING_HERSHEY",
+    slug: "globex",
+    prefix: "SUPRSEND_GLOBEX",
     defaultBrand: { name: "Globex", primary: "#0F766E", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
       {
-        id: "hsy-reeses", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902",
+        id: "globex-bar", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902",
         members: team(HSY, [
           ["u_riley_fox", "Riley Fox", "Project Manager"],
           ["u_dale_burns", "Dale Burns", "Project Sponsor"],
@@ -121,7 +121,7 @@ const WORKSPACES = [
         ]),
       },
       {
-        id: "hsy-kisses", name: "Foil-Wrapped Minis", primary: "#7C3AED",
+        id: "globex-minis", name: "Foil-Wrapped Minis", primary: "#7C3AED",
         members: team(HSY, [
           ["u_iris_lane", "Iris Lane", "Project Manager"],
           ["u_greg_pope", "Greg Pope", "Project Sponsor"],
@@ -191,7 +191,7 @@ const NOTIFICATIONS = [
   // Comment Added — BATCHED per project (batch_key=.project_id). The workflow sends
   // the `comment-added-batched` template, which renders the $batched_events list.
   { slug: "comment-added", name: "Comment Added", template: "comment-added-batched", channels: ["email", "inbox", "slack"], batched: true,
-    sample: { is_batch: true, batch_count: 3, payload: { project_id: "honeywell-aero", comment_author: "Karen Brooks", comment_body: "Pushed the latest FMEA — can you review section 3?", project_link: LINK } } },
+    sample: { is_batch: true, batch_count: 3, payload: { project_id: "acme-aero", comment_author: "Karen Brooks", comment_body: "Pushed the latest FMEA — can you review section 3?", project_link: LINK } } },
   { slug: "tagged-on-project", name: "Tagged on a Project", subject: "{{actor_name}} tagged you on {{$brand.brand_name}}", line: "{{actor_name}} tagged you in a comment on {{$brand.brand_name}}:<br/><br/>&ldquo;{{comment_body}}&rdquo;", inboxHeader: "{{actor_name}} tagged you", channels: ["email", "inbox", "slack"],
     sample: { actor_name: "Marcus Hale", comment_body: "Sarah, can you confirm the FMEA scope before Friday?", project_link: LINK } },
 ];
@@ -485,7 +485,7 @@ for (const ws of WORKSPACES) {
       try {
         const base = `/v2/${wsKey}/template/${slug}`;
         await send("POST", `${base}/`, {
-          name, description: subject, tags: ["wellspring"], enabled_channels: channels,
+          name, description: subject, tags: ["keystone"], enabled_channels: channels,
         });
         // Build each channel's content ONCE, then publish it as the MASTER variant
         // (tenant_id null) PLUS one variant per PROJECT tenant — so every project

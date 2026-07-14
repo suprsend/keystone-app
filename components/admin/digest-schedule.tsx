@@ -43,7 +43,7 @@ export function DigestCell({
   schedule: DigestOption[];
   disabled?: boolean;
   // When false, the editor is ADJUST-ONLY: no enable toggle, no add/remove option
-  // (digest is defined by Wellspring in SuprSend; the customer only tunes values).
+  // (digest is defined by Keystone in SuprSend; the customer only tunes values).
   canAuthor?: boolean;
   onChange: (enabled: boolean, options: DigestOption[]) => void;
 }) {
@@ -160,7 +160,7 @@ function Editor({
   return (
     <>
       {/* Enable / disable digest for this category (digest_schedule.enabled). Only
-          shown when authoring (Wellspring); the customer view is adjust-only. */}
+          shown when authoring (Keystone); the customer view is adjust-only. */}
       {canAuthor && (
         <div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
           <div>

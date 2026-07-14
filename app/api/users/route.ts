@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       }
     }
     // Teams (the third channel) is display-only — no real webhook delivery wired
-    // (Wellspring uses Teams, not Slack), so nothing channel-specific to attach here.
+    // (Keystone uses Teams, not Slack), so nothing channel-specific to attach here.
     await upsertUser(ws, id, { name, email, role });
 
     // New hire → add to the company list and emit the onboarding event. The

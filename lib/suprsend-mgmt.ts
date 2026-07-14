@@ -413,7 +413,7 @@ export async function publishTemplate(
     body: JSON.stringify({
       name: draft.name,
       description: draft.description ?? "",
-      tags: ["wellspring", "ai-authored"],
+      tags: ["keystone", "ai-authored"],
       enabled_channels: channels,
     }),
   });
@@ -432,7 +432,7 @@ export async function publishTemplate(
   // defined" errors). Non-fatal: a mock-data failure shouldn't block publish.
   await setMockData(ws, draft.slug, draft.sampleData);
 
-  const committed = await call(ws, "v2", `template/${draft.slug}/commit/?commit_message=${encodeURIComponent("Published from Wellspring")}`, {
+  const committed = await call(ws, "v2", `template/${draft.slug}/commit/?commit_message=${encodeURIComponent("Published from Keystone")}`, {
     method: "PATCH",
     body: JSON.stringify({}),
   });
@@ -533,7 +533,7 @@ export async function getWorkflowTriggerData(ws: WorkspaceSlug, slug: string): P
 }
 
 export async function publishWorkflow(ws: WorkspaceSlug, slug: string, workflow: unknown) {
-  const r = await call(ws, "v1", `workflow/${slug}/?commit=true&commit_message=${encodeURIComponent("Published from Wellspring")}`, {
+  const r = await call(ws, "v1", `workflow/${slug}/?commit=true&commit_message=${encodeURIComponent("Published from Keystone")}`, {
     method: "POST",
     body: JSON.stringify(normalizeWorkflow(workflow)),
   });

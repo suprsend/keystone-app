@@ -115,7 +115,7 @@ export function humanizeNode(ref?: string | null): string {
 // inherit text color); Teams is the official multicolor mark (ignores text color by
 // design). The widened type covers both — consumers pass className only.
 // NOTE: the `slack` KEY is kept (templates/workflows/prefs still use it internally),
-// but it's branded as Microsoft TEAMS — Wellspring uses Teams, not Slack, and there's
+// but it's branded as Microsoft TEAMS — Keystone uses Teams, not Slack, and there's
 // no real Teams channel wired (display-only; the Slack webhook delivery was removed).
 export const CHANNEL_ICON: Record<string, ComponentType<{ className?: string }>> = {
   email: Mail,

@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           objectId: projectId,
           data: {
             project_id: projectId,
-            project_link: `https://app.accolade.com/projects/${projectId}`,
+            project_link: `https://app.keystone.com/projects/${projectId}`,
             except,
             ...(cost !== null ? { cost } : {}),
           },

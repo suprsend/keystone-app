@@ -193,8 +193,8 @@ export function AppProviders({
   const actorRole =
     actorId === ADMIN_ACTOR ? "Admin" : users.find((u) => u.distinctId === actorId)?.role ?? "";
 
-  // The app chrome uses a single consistent Accolade palette (navy primary, blue
-  // accents) — like the real Sopheon product. White-label colour comes from the
+  // The app chrome uses a single consistent Keystone palette (navy primary, blue
+  // accents) — like the real Keystone product. White-label colour comes from the
   // data/branding surfaces, not by recolouring the chrome per project.
   return (
     <AppContext.Provider

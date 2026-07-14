@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       (await getTenantPrefExtras(ws.slug, tenant, category).catch(() => ({ except: [] as string[] }))).except ?? [];
     const payload = {
       project_id: tenant,
-      project_link: `https://app.accolade.com/projects/${tenant}`,
+      project_link: `https://app.keystone.com/projects/${tenant}`,
       comment_author: authorName,
       actor_name: authorName,
       comment_body: text,

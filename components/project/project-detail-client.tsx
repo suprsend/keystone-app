@@ -14,7 +14,7 @@ import { ProjectOverview } from "@/components/project/project-overview";
 import { ProjectStateControl } from "@/components/project/project-state-control";
 import { cn } from "@/lib/utils";
 
-// Project detail (Manage). Accolade's internal tab bar is shown for product
+// Project detail (Manage). Keystone's internal tab bar is shown for product
 // fidelity; only Overview (placeholder), Resources and Notifications are wired.
 // A project IS a SuprSend tenant (preferences/brand) AND object (membership).
 const TABS: { key: string; label: string; fn?: boolean }[] = [
@@ -100,7 +100,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
       {/* Hardcoded project summary (decorative) — shown to EVERYONE, like the nav. */}
       <ProjectSummary health={meta?.health} />
 
-      {/* Accolade internal tab bar */}
+      {/* Keystone internal tab bar */}
       <div className="shrink-0 overflow-x-auto border-b border-border">
         <nav className="flex w-max items-center gap-1">
           {TABS.map((t) =>
@@ -138,7 +138,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
   );
 }
 
-// Decorative project summary cards (Accolade chrome). Values are hardcoded; the
+// Decorative project summary cards (Keystone chrome). Values are hardcoded; the
 // health badge colour follows the project's health. Shown to every viewer.
 function ProjectSummary({ health }: { health?: string }) {
   const score =

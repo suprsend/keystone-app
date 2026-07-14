@@ -1,11 +1,11 @@
 // People roster per project (tenant). This is the demo's mock org directory: the
-// team members, project manager, sponsor and process owner on each Accolade
+// team members, project manager, sponsor and process owner on each Keystone
 // project. It is the single source of truth for both the notification
 // subscription surfaces and the mock /api/users roster, so they stay consistent.
 //
 // EMAIL SAFETY — READ THIS:
 // Every address MUST route to the one safe inbox so notifications are testable but
-// reach NO ONE else. NEVER use a real company domain (honeywell.com, hersheys.com) or
+// reach NO ONE else. NEVER use a real company domain (acme.com, globexs.com) or
 // a bare name@domain — those can hit real people. The safe inbox is configurable; the
 // policy lives in lib/safe-email.ts (SAFE_TEST_EMAIL_USER / _DOMAIN).
 
@@ -27,7 +27,7 @@ const mail = testEmail;
 // NAMES: US/English only — our customers are US-based. Keep every name a common
 // American name (no non-US names). Emails stay plus-addressed to the one safe inbox.
 export const ROSTER: Record<TenantId, Person[]> = {
-  "honeywell-aero": [
+  "acme-aero": [
     { id: "u_dana_carter", name: "Dana Carter", email: mail("dana.carter"), role: "Project Manager" },
     { id: "u_marcus_hale", name: "Marcus Hale", email: mail("marcus.hale"), role: "Project Sponsor" },
     { id: "u_karen_brooks", name: "Karen Brooks", email: mail("karen.brooks"), role: "Process Owner" },
@@ -35,7 +35,7 @@ export const ROSTER: Record<TenantId, Person[]> = {
     { id: "u_sarah_bennett", name: "Sarah Bennett", email: mail("sarah.bennett"), role: "Team Member" },
     { id: "u_luke_harper", name: "Luke Harper", email: mail("luke.harper"), role: "Team Member" },
   ],
-  "honeywell-bms": [
+  "acme-bms": [
     { id: "u_grace_miller", name: "Grace Miller", email: mail("grace.miller"), role: "Project Manager" },
     { id: "u_tom_freed", name: "Tom Freed", email: mail("tom.freed"), role: "Project Sponsor" },
     { id: "u_nancy_reed", name: "Nancy Reed", email: mail("nancy.reed"), role: "Process Owner" },
@@ -43,7 +43,7 @@ export const ROSTER: Record<TenantId, Person[]> = {
     { id: "u_mia_foster", name: "Mia Foster", email: mail("mia.foster"), role: "Team Member" },
     { id: "u_owen_daniels", name: "Owen Daniels", email: mail("owen.daniels"), role: "Team Member" },
   ],
-  "hsy-reeses": [
+  "globex-bar": [
     { id: "u_riley_fox", name: "Riley Fox", email: mail("riley.fox"), role: "Project Manager" },
     { id: "u_dale_burns", name: "Dale Burns", email: mail("dale.burns"), role: "Project Sponsor" },
     { id: "u_amy_sullivan", name: "Amy Sullivan", email: mail("amy.sullivan"), role: "Process Owner" },
@@ -51,7 +51,7 @@ export const ROSTER: Record<TenantId, Person[]> = {
     { id: "u_jade_morgan", name: "Jade Morgan", email: mail("jade.morgan"), role: "Team Member" },
     { id: "u_paul_nash", name: "Paul Nash", email: mail("paul.nash"), role: "Team Member" },
   ],
-  "hsy-kisses": [
+  "globex-minis": [
     { id: "u_iris_lane", name: "Iris Lane", email: mail("iris.lane"), role: "Project Manager" },
     { id: "u_greg_pope", name: "Greg Pope", email: mail("greg.pope"), role: "Project Sponsor" },
     { id: "u_laura_west", name: "Laura West", email: mail("laura.west"), role: "Process Owner" },

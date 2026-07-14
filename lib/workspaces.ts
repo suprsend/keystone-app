@@ -1,5 +1,5 @@
 // Workspace registry — one workspace per CUSTOMER (the companies that run
-// Accolade). This is Wellspring's model: each customer is its own isolated SuprSend
+// Keystone). This is Keystone's model: each customer is its own isolated SuprSend
 // workspace with its own keys. The account-level Service Token selects the
 // workspace by URL path on the Management API; the per-workspace key/secret +
 // signing key drive the node SDK and the embedded editor.
@@ -11,7 +11,7 @@
 // `envPrefix(ws)` in lib/server/workspace.ts), and add its projects in
 // lib/tenants.ts. Brand colour/logo here is the render-time default.
 
-export type WorkspaceSlug = "wellspring-honeywell" | "wellspring-hershey";
+export type WorkspaceSlug = "acme" | "globex";
 
 export interface Workspace {
   slug: WorkspaceSlug;
@@ -31,7 +31,7 @@ export interface Workspace {
 
 export const WORKSPACES: Workspace[] = [
   {
-    slug: "wellspring-honeywell",
+    slug: "acme",
     label: "Acme",
     fullName: "Acme Corporation",
     initial: "Ac",
@@ -40,7 +40,7 @@ export const WORKSPACES: Workspace[] = [
     accentForeground: "#ffffff",
   },
   {
-    slug: "wellspring-hershey",
+    slug: "globex",
     label: "Globex",
     fullName: "Globex Corporation",
     initial: "Gx",
@@ -50,7 +50,7 @@ export const WORKSPACES: Workspace[] = [
   },
 ];
 
-export const DEFAULT_WORKSPACE: WorkspaceSlug = "wellspring-honeywell";
+export const DEFAULT_WORKSPACE: WorkspaceSlug = "acme";
 
 export function getWorkspace(slug?: string | null): Workspace {
   return WORKSPACES.find((w) => w.slug === slug) ?? WORKSPACES[0];

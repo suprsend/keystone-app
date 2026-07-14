@@ -142,10 +142,10 @@ interface ProjectState {
 }
 
 const SEED_STATUS: Record<string, ProjectStatus> = {
-  "honeywell-aero": "Not started",
-  "honeywell-bms": "In-flight",
-  "hsy-reeses": "Not started",
-  "hsy-kisses": "Paused",
+  "acme-aero": "Not started",
+  "acme-bms": "In-flight",
+  "globex-bar": "Not started",
+  "globex-minis": "Paused",
 };
 
 const human = (iso: string) => {
@@ -393,7 +393,7 @@ function projectBase(tenant: TenantId) {
   // Only project-level deltas. project_name is NOT passed — templates read it from
   // SuprSend's tenant/brand model ({{$brand.tenant_name}}). project_id is the comment
   // batch key; project_link is a project-level constant (same for all recipients).
-  return { project_id: tenant, project_link: `https://app.accolade.com/projects/${tenant}` };
+  return { project_id: tenant, project_link: `https://app.keystone.com/projects/${tenant}` };
 }
 
 /** Build the events a change fires. OBJECT-mode events carry only the data payload

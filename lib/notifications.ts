@@ -1,4 +1,4 @@
-// The notification model for Accolade (the Wellspring PRD). Each notification is
+// The notification model for Keystone (the Keystone PRD). Each notification is
 // an organization-level email notification with a trigger, recipient types, and
 // content. Customers (workspaces) get the system defaults and can add their own.
 //
@@ -39,7 +39,7 @@ export interface NotificationDef {
   subject: string;
   body: string;
   active: boolean;
-  /** System default (shipped by Wellspring) vs custom (created by the customer admin). */
+  /** System default (shipped by Keystone) vs custom (created by the customer admin). */
   isDefault: boolean;
 }
 
@@ -151,7 +151,7 @@ const DEFAULTS: NotificationDef[] = [
 // One custom (admin-created) notification per customer — shows the "custom" +
 // "inactive" states in the admin list.
 const CUSTOM: Record<WorkspaceSlug, NotificationDef[]> = {
-  "wellspring-honeywell": [
+  "acme": [
     {
       id: "weekly-portfolio-digest",
       ref: "Custom",
@@ -167,7 +167,7 @@ const CUSTOM: Record<WorkspaceSlug, NotificationDef[]> = {
       isDefault: false,
     },
   ],
-  "wellspring-hershey": [
+  "globex": [
     {
       id: "gate-review-reminder",
       ref: "Custom",

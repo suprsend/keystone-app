@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       TASKS_UPCOMING_EVENT,
       {
         project_id: tenant,
-        project_link: `https://app.accolade.com/projects/${tenant}`,
+        project_link: `https://app.keystone.com/projects/${tenant}`,
         task_id: task.id,
         task_name: name,
         due_date: dueDateIso,
@@ -140,7 +140,7 @@ export async function PATCH(req: Request) {
           objectId: tenant,
           data: {
             project_id: tenant,
-            project_link: `https://app.accolade.com/projects/${tenant}`,
+            project_link: `https://app.keystone.com/projects/${tenant}`,
             task_name: task.name,
             task_assignee: users.find((u) => u.distinctId === task.assigneeId)?.name ?? task.assigneeId,
             except: await exceptOf(ws.slug, tenant, "task-completed"),

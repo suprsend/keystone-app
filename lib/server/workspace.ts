@@ -32,7 +32,7 @@ export async function getActiveTenant(override?: string | null): Promise<TenantI
   return getDefaultTenant(ws.slug).id;
 }
 
-/** Env-var prefix for a workspace's server credentials. slug "wellspring-honeywell" → "SUPRSEND_WELLSPRING_HONEYWELL". */
+/** Env-var prefix for a workspace's server credentials. slug "acme" → "SUPRSEND_ACME". */
 export function envPrefix(ws: Workspace): string {
   return `SUPRSEND_${ws.slug.replace(/-/g, "_").toUpperCase()}`;
 }

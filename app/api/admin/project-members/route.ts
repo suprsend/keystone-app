@@ -33,7 +33,7 @@ async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: strin
       objectId: tenant,
       data: {
         project_id: tenant,
-        project_link: `https://app.accolade.com/projects/${tenant}`,
+        project_link: `https://app.keystone.com/projects/${tenant}`,
         new_pm_name: newPmName,
         except: (await getTenantPrefExtras(ws.slug, tenant, "project-assigned").catch(() => ({ except: [] as string[] }))).except ?? [],
       },

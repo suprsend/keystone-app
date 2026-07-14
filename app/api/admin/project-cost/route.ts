@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     // PM/Sponsor/Process Owner) — the app only supplies the cost; no recipient logic.
     await triggerObjectWorkflow(
       ws,
-      { workflow: "budget-alert", objectType: "project", objectId: projectId, data: { cost: n, project_link: `https://app.accolade.com/projects/${projectId}` } },
+      { workflow: "budget-alert", objectType: "project", objectId: projectId, data: { cost: n, project_link: `https://app.keystone.com/projects/${projectId}` } },
       projectId,
     ).catch(() => {});
     return NextResponse.json({ ok: true, cost: n });

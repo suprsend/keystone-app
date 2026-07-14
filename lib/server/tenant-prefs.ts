@@ -8,7 +8,7 @@
 //
 // Precedence (SuprSend): user preference → TENANT default → category default.
 // So a tenant default applies to every user on that project who hasn't set their
-// own choice. See [[wellspring-build-state]] + docs/tenant-preference.
+// own choice. See [[keystone-build-state]] + docs/tenant-preference.
 import "server-only";
 import crypto from "crypto";
 import type { WorkspaceSlug } from "@/lib/workspaces";

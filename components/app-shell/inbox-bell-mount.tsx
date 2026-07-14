@@ -4,8 +4,8 @@ import * as React from "react";
 import { Bell } from "lucide-react";
 import { SuprSendProvider, Inbox } from "@suprsend/react";
 
-// In-app inbox as a header bell + popover (SuprSend's <Inbox>), themed to Accolade
-// so it sits natively in the Wellspring chrome — the standard "bell → dropdown
+// In-app inbox as a header bell + popover (SuprSend's <Inbox>), themed to Keystone
+// so it sits natively in the Keystone chrome — the standard "bell → dropdown
 // feed" pattern. Auth + tenant scoping mirror the full-page inbox.
 const FONT = "var(--font-sans), ui-sans-serif, system-ui, sans-serif";
 const STORES = [

@@ -35,7 +35,7 @@ export function ConditionsCell({
   conditions: Condition[];
   editable: boolean;
   // When false, ADJUST-ONLY: the value can be edited, but conditions can't be
-  // added or removed (the set is defined by Wellspring in SuprSend).
+  // added or removed (the set is defined by Keystone in SuprSend).
   canAuthor?: boolean;
   onChange: (next: Condition[]) => void;
 }) {

@@ -69,7 +69,7 @@ export async function getUser(ws: Workspace, distinctId: string): Promise<WorkUs
 }
 
 /** Add or update an employee: sets email + name + role. (Slack/Teams delivery is not
- *  wired — the third channel is display-only; Wellspring uses Teams, not Slack.) */
+ *  wired — the third channel is display-only; Keystone uses Teams, not Slack.) */
 export async function upsertUser(
   ws: Workspace,
   distinctId: string,
@@ -159,7 +159,7 @@ export async function unsubscribeUserFromProject(ws: Workspace, projectId: strin
   return client(ws).objects.delete_subscriptions(PROJECT_OBJECT, projectId, { recipients: [distinctId] });
 }
 
-// Roles that exactly ONE person can hold on a project (Wellspring's real model — a
+// Roles that exactly ONE person can hold on a project (Keystone's real model — a
 // project has a single PM, Process Owner, Sponsor). Team Member is the open role.
 export const SINGLE_ROLES = ["Project Manager", "Process Owner", "Project Sponsor"];
 

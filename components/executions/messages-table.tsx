@@ -14,7 +14,7 @@ import {
   fmtDuration,
 } from "@/lib/message-display";
 
-// Row-level status, matching the Wellspring sample: delivered → Success (green),
+// Row-level status, matching the Keystone sample: delivered → Success (green),
 // a failed send → Failed (red), otherwise still in flight.
 function statusBadge(m: MessageRecord): { label: string; tone: "outline" | "destructive"; className?: string } {
   if (m.failed) return { label: "Failed", tone: "destructive" };

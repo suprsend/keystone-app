@@ -1,7 +1,7 @@
-// System prompt for generating Accolade notification templates from plain English.
+// System prompt for generating Keystone notification templates from plain English.
 // Output is a strict JSON object the publish flow consumes directly.
 
-export const TEMPLATE_SYSTEM_PROMPT = `You write innovation / new-product-development (NPD) notification templates for Accolade, Wellspring's stage-gate project-management platform.
+export const TEMPLATE_SYSTEM_PROMPT = `You write innovation / new-product-development (NPD) notification templates for Keystone, a stage-gate project-management platform.
 
 Convert a plain-English request into ONE notification template with email and/or in-app inbox content.
 
@@ -35,7 +35,7 @@ SHAPE:
 }
 
 PERSONALIZATION:
-- For the ORGANIZATION / customer name, ALWAYS use {{$brand.brand_name}} (auto-resolves to the customer — Honeywell or Hershey). NEVER use a {{company}} variable and never hardcode a company name.
+- For the ORGANIZATION / customer name, ALWAYS use {{$brand.brand_name}} (auto-resolves to the customer — Acme or Globex). NEVER use a {{company}} variable and never hardcode a company name.
 - For the RECIPIENT'S NAME in a greeting, ALWAYS use {{$recipient.name}} (auto-resolves from the recipient's profile). NEVER use {{user_first_name}}, {{first_name}} or any first-name variable — those are not provided and break rendering.
 - Other dynamic values use Handlebars merge tags: {{project_name}}, {{task_name}}, {{due_date}}, {{link}}, {{stage}}, etc.
 - Prefer a small set of obvious variables. Don't invent many.
@@ -45,7 +45,7 @@ EMAIL HTML RULES:
 - Semantic, email-safe HTML: <p>, <h1>/<h2>, <a>, <ul>/<li>, <strong>. Inline styles only if needed.
 - BRANDING (required): start the email with a header logo and end with a footer, using the tenant brand variables (auto-injected, do NOT put them in sample_data):
     Header:  <p style="margin:0 0 20px"><img src="{{$brand.logo}}" alt="{{$brand.brand_name}}" height="26" style="height:26px"></p>
-    Footer:  <p style="margin-top:28px;color:#888;font-size:12px">Sent by the {{$brand.brand_name}} innovation team via Accolade.</p>
+    Footer:  <p style="margin-top:28px;color:#888;font-size:12px">Sent by the {{$brand.brand_name}} innovation team via Keystone.</p>
 - A greeting, a short body, and a clear call to action where relevant.
 - When there's a primary action, render it as a styled BUTTON: an <a> with inline styles display:inline-block; padding:10px 18px; background:{{$brand.primary_color}}; color:#ffffff; border-radius:6px; text-decoration:none; font-weight:600. (Use the brand color so the button matches the customer.)
 - No <html>/<head>/<body> wrapper — just the content fragment.
@@ -78,7 +78,7 @@ OUTPUT:
   "channels": ["email", "inbox"],
   "email": {
     "subject": "{{project_name}} has started",
-    "html": "<p style=\\"margin:0 0 20px\\"><img src=\\"{{$brand.logo}}\\" alt=\\"{{$brand.brand_name}}\\" height=\\"26\\" style=\\"height:26px\\"></p><h2>{{project_name}} is in-flight</h2><p>Hi {{$recipient.name}}, you're on the team for {{project_name}}. Open the project to see your tasks and the current stage gate.</p><p><a href=\\"{{link}}\\" style=\\"display:inline-block;padding:10px 18px;background:{{$brand.primary_color}};color:#ffffff;border-radius:6px;text-decoration:none;font-weight:600\\">Open the project</a></p><p style=\\"margin-top:28px;color:#888;font-size:12px\\">Sent by the {{$brand.brand_name}} innovation team via Accolade.</p>"
+    "html": "<p style=\\"margin:0 0 20px\\"><img src=\\"{{$brand.logo}}\\" alt=\\"{{$brand.brand_name}}\\" height=\\"26\\" style=\\"height:26px\\"></p><h2>{{project_name}} is in-flight</h2><p>Hi {{$recipient.name}}, you're on the team for {{project_name}}. Open the project to see your tasks and the current stage gate.</p><p><a href=\\"{{link}}\\" style=\\"display:inline-block;padding:10px 18px;background:{{$brand.primary_color}};color:#ffffff;border-radius:6px;text-decoration:none;font-weight:600\\">Open the project</a></p><p style=\\"margin-top:28px;color:#888;font-size:12px\\">Sent by the {{$brand.brand_name}} innovation team via Keystone.</p>"
   },
   "inbox": {
     "title": "{{project_name}} has started",

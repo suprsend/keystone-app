@@ -143,7 +143,7 @@ So you can trace a request end to end. SuprSend's own reference is at <https://d
 | `NEXT_PUBLIC_<PREFIX>_PUBLIC_KEY` / `_WORKSPACE_KEY` | Per customer | Browser React SDK (inbox). |
 | `<PREFIX>_SLACK_WEBHOOK` | Per customer (optional) | Legacy Slack webhook. **Unused** — Slack delivery was removed (see Channels below). |
 
-`<PREFIX>` is derived from the customer slug: `wellspring-honeywell` → `SUPRSEND_WELLSPRING_HONEYWELL`.
+`<PREFIX>` is derived from the customer slug: `acme` → `SUPRSEND_ACME`.
 Secrets never reach the browser; `.env.local` and `keys.txt` are gitignored.
 
 > A condensed screen-by-screen API index is in

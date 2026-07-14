@@ -189,7 +189,7 @@ export async function addCategory(
     });
   }
   const res = await fetch(
-    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Added category from Wellspring")}`,
+    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Added category from Keystone")}`,
     {
       method: "POST",
       headers: authHeaders(),
@@ -224,7 +224,7 @@ export async function renameCategory(
   }
   if (!found) return { ok: false, status: 404 };
   const res = await fetch(
-    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Renamed category from Wellspring")}`,
+    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Renamed category from Keystone")}`,
     {
       method: "POST",
       headers: authHeaders(),
@@ -262,7 +262,7 @@ export async function saveCategoryDigest(
   }
   if (!found) return { ok: false, status: 404 };
   const res = await fetch(
-    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Digest schedule from Wellspring")}`,
+    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Digest schedule from Keystone")}`,
     {
       method: "POST",
       headers: authHeaders(),
@@ -297,7 +297,7 @@ export async function saveCategoryConditions(
   }
   if (!found) return { ok: false, status: 404 };
   const res = await fetch(
-    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Conditions from Wellspring")}`,
+    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Conditions from Keystone")}`,
     {
       method: "POST",
       headers: authHeaders(),
@@ -332,7 +332,7 @@ export async function saveCategoryRoles(
   }
   if (!found) return { ok: false, status: 404 };
   const res = await fetch(
-    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Recipients from Wellspring")}`,
+    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Recipients from Keystone")}`,
     {
       method: "POST",
       headers: authHeaders(),
@@ -369,7 +369,7 @@ export async function savePreferenceConfig(
     }
   }
   const res = await fetch(
-    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Updated from Wellspring")}`,
+    `${MGMNT}/v1/${wsPath(ws)}/preference_category/?commit=true&commit_message=${encodeURIComponent("Updated from Keystone")}`,
     {
       method: "POST",
       headers: authHeaders(),

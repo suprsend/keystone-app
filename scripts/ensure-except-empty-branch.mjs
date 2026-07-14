@@ -19,14 +19,14 @@
 //   node --env-file=.env.local       scripts/ensure-except-empty-branch.mjs all
 //   node --env-file=.env.prod.backup scripts/ensure-except-empty-branch.mjs all
 //   APPLY=1 node --env-file=.env.prod.backup scripts/ensure-except-empty-branch.mjs all
-//   (arg: honeywell | hershey | all — default all; dry run unless APPLY=1)
+//   (arg: acme | globex | all — default all; dry run unless APPLY=1)
 
 const MGMNT = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
 const TOKEN = process.env.SUPRSEND_SERVICE_TOKEN;
 const APPLY = process.env.APPLY === "1";
 const WS = {
-  honeywell: process.env.SUPRSEND_WELLSPRING_HONEYWELL_WORKSPACE_KEY,
-  hershey: process.env.SUPRSEND_WELLSPRING_HERSHEY_WORKSPACE_KEY,
+  acme: process.env.SUPRSEND_ACME_WORKSPACE_KEY,
+  globex: process.env.SUPRSEND_GLOBEX_WORKSPACE_KEY,
 };
 const hdr = { Authorization: `ServiceToken ${TOKEN}`, "Content-Type": "application/json" };
 

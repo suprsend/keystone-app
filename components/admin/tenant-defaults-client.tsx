@@ -537,7 +537,7 @@ function Body() {
                           </select>
                         </td>
                         <td className="px-4 py-3 align-top">
-                          {/* Digest shown only where Wellspring defined a schedule;
+                          {/* Digest shown only where Keystone defined a schedule;
                               else sent immediately. The chip shows the resolved cadence
                               + whether it's the workspace default or a project override. */}
                           {schedule[r.category]?.length ? (

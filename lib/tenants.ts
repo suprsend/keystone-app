@@ -12,10 +12,10 @@ import type { WorkspaceSlug } from "@/lib/workspaces";
 import { DEFAULT_WORKSPACE } from "@/lib/workspaces";
 
 export type TenantId =
-  | "honeywell-aero"
-  | "honeywell-bms"
-  | "hsy-reeses"
-  | "hsy-kisses";
+  | "acme-aero"
+  | "acme-bms"
+  | "globex-bar"
+  | "globex-minis";
 
 export type Stage = "Discovery" | "Scoping" | "Business Case" | "Development" | "Testing" | "Launch";
 export type Health = "On track" | "At risk" | "Off track";
@@ -51,8 +51,8 @@ export interface Tenant {
 export const TENANTS: Tenant[] = [
   // ── Acme projects ───────────────────────────────────────────────────────────
   {
-    id: "honeywell-aero",
-    workspace: "wellspring-honeywell",
+    id: "acme-aero",
+    workspace: "acme",
     label: "Aero Turbine Sensors Gen-2",
     fullName: "Aerospace — Turbine Sensors Generation 2",
     initial: "A",
@@ -66,8 +66,8 @@ export const TENANTS: Tenant[] = [
     nextGate: "Jul 14, 2026",
   },
   {
-    id: "honeywell-bms",
-    workspace: "wellspring-honeywell",
+    id: "acme-bms",
+    workspace: "acme",
     label: "Smart Building Controls v4",
     fullName: "Building Technologies — Smart Controls v4",
     initial: "B",
@@ -82,8 +82,8 @@ export const TENANTS: Tenant[] = [
   },
   // ── Globex projects ─────────────────────────────────────────────────────────
   {
-    id: "hsy-reeses",
-    workspace: "wellspring-hershey",
+    id: "globex-bar",
+    workspace: "globex",
     label: "Zero-Sugar Bar",
     fullName: "Zero-Sugar Bar — Line Extension",
     initial: "Z",
@@ -97,8 +97,8 @@ export const TENANTS: Tenant[] = [
     nextGate: "Jul 10, 2026",
   },
   {
-    id: "hsy-kisses",
-    workspace: "wellspring-hershey",
+    id: "globex-minis",
+    workspace: "globex",
     label: "Foil-Wrapped Minis",
     fullName: "Foil-Wrapped Minis",
     initial: "FM",

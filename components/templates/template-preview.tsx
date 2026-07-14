@@ -270,7 +270,7 @@ function SlackBlocks({ blocks, vars }: { blocks: Record<string, unknown>[]; vars
           </span>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-semibold">{vars["$brand.brand_name"] || "Wellspring"}</span>
+              <span className="text-sm font-semibold">{vars["$brand.brand_name"] || "Keystone"}</span>
               <span className="rounded bg-muted px-1 text-[10px] font-medium uppercase text-muted-foreground">App</span>
             </div>
             {blocks.map((block, i) => {

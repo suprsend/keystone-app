@@ -317,7 +317,7 @@ function Body() {
                           </select>
                         </td>
                         <td className="px-4 py-3 align-top">
-                          {/* Digest is shown only where Wellspring DEFINED a schedule
+                          {/* Digest is shown only where Keystone DEFINED a schedule
                               (digest_schedule.enabled, from the API). Adjust-only here —
                               the customer tunes values; it can't enable digest on a
                               workflow that doesn't use one. Else: sent immediately. */}
