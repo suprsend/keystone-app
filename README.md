@@ -1,8 +1,9 @@
-# Wellspring × SuprSend — Notifications demo (“Accolade Projects”)
+# Keystone × SuprSend — notifications reference app
 
-A Next.js app showing how **Accolade Projects** (the demo product) wires up **SuprSend** for its
+A Next.js app showing how **Keystone** (a demo project-management product) wires up **SuprSend** for its
 notifications: an admin notification catalog, message templates, per-project and per-person preferences,
-digests, multi-brand, and an in-app inbox.
+digests, multi-brand, and an in-app inbox. Two demo companies — **Acme** and **Globex** — each run their
+projects on it.
 
 Every screen is backed by real SuprSend API calls, so you can trace exactly *what each screen does* and
 *which SuprSend call it makes*.
@@ -12,26 +13,41 @@ Every screen is backed by real SuprSend API calls, so you can trace exactly *wha
 
 This README has three parts. Read them in order:
 
-1. **[Architecture](#part-1--architecture-how-wellspring-maps-to-suprsend)** — how Accolade concepts map onto SuprSend concepts.
+1. **[Architecture](#part-1--architecture-how-keystone-maps-to-suprsend)** — how Keystone concepts map onto SuprSend concepts.
 2. **[The SuprSend integration](#part-2--the-suprsend-integration-which-api-does-what)** — the actual APIs, hosts, and auth used.
 3. **[App walkthrough](#part-3--app-walkthrough-every-screen-what-it-does-what-it-calls)** — each screen, what you can do there, and what it calls.
 
 ---
 
-## Quick start
+## Setup
 
 ```bash
+# 1 — Install
 npm install
-cp .env.example .env.local     # fill in SuprSend keys (the file explains each one)
-npm run dev -- -p 3200         # http://localhost:3200
+
+# 2 — Add your SuprSend keys
+cp .env.example .env.local     # fill in the keys (the file explains each one)
+
+# 3 — Provision your workspace (ONE-TIME, per SuprSend workspace)
+#     Creates the tenants, users, objects, categories, templates, and
+#     workflows this app expects. Without this, a fresh workspace is empty.
+node --env-file=.env.local scripts/provision.mjs
+
+# 4 — Run
+npm run dev                    # http://localhost:3000
 ```
 
-Without keys, the app runs on **mock data** so every screen previews. Add a customer's keys and that
-customer switches to **live** SuprSend automatically (`lib/server/workspace.ts → hasWorkspaceKeys`).
+**Step 3 is required.** The app *reads* its tenants / categories / workflows from SuprSend — it does
+**not** create them on startup. Point it at a workspace that hasn't been provisioned and every screen
+renders empty. Run `provision.mjs` once per workspace to populate it, then the app fetches live data.
+
+> Without keys, the app currently falls back to mock data so screens still preview
+> (`lib/server/workspace.ts → hasWorkspaceKeys`). This mock fallback is slated for removal — see
+> `BACKEND_CHANGES.md` (§2): unconfigured should show empty states, not fake data.
 
 ---
 
-## Part 1 — Architecture: how Wellspring maps to SuprSend
+## Part 1 — Architecture: how Keystone maps to SuprSend
 
 Accolade is **B2B2B2C**: Wellspring (the vendor) sells to **customers**; each customer runs **projects**;
 each project has **people**. SuprSend has its own primitives. The whole integration is this mapping:

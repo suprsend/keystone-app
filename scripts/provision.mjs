@@ -1,4 +1,4 @@
-// Wellspring provisioning — creates SuprSend resources in each customer workspace.
+// Keystone provisioning — creates SuprSend resources in each customer workspace.
 // Run: node --env-file=.env.local scripts/provision.mjs [stage]
 // Stages: tenants | users | all (default: all)
 //
@@ -78,7 +78,7 @@ const WORKSPACES = [
     prefix: "SUPRSEND_WELLSPRING_HONEYWELL",
     // Workspace default brand (SuprSend `default` tenant) — the account-wide
     // {{$brand.*}} fallback shown in Admin → Branding. The customer's own brand.
-    defaultBrand: { name: "Honeywell", primary: "#EE3124", secondary: "#1D1D1D", tertiary: "#6B7280" },
+    defaultBrand: { name: "Acme", primary: "#2563EB", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
       {
         id: "honeywell-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81",
@@ -107,10 +107,10 @@ const WORKSPACES = [
   {
     slug: "wellspring-hershey",
     prefix: "SUPRSEND_WELLSPRING_HERSHEY",
-    defaultBrand: { name: "Hershey", primary: "#6F4E37", secondary: "#3C2415", tertiary: "#6B7280" },
+    defaultBrand: { name: "Globex", primary: "#0F766E", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
       {
-        id: "hsy-reeses", name: "Reese's Zero-Sugar Line Extension", primary: "#ED7902",
+        id: "hsy-reeses", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902",
         members: team(HSY, [
           ["u_riley_fox", "Riley Fox", "Project Manager"],
           ["u_dale_burns", "Dale Burns", "Project Sponsor"],
@@ -121,7 +121,7 @@ const WORKSPACES = [
         ]),
       },
       {
-        id: "hsy-kisses", name: "Hershey Kisses", primary: "#7C3AED",
+        id: "hsy-kisses", name: "Foil-Wrapped Minis", primary: "#7C3AED",
         members: team(HSY, [
           ["u_iris_lane", "Iris Lane", "Project Manager"],
           ["u_greg_pope", "Greg Pope", "Project Sponsor"],
@@ -155,8 +155,8 @@ const CATEGORY_SECTIONS = [
   ] },
 ];
 
-// A plausible Accolade project link for previews/tests.
-const LINK = "https://app.accolade.com/projects/demo";
+// A plausible Keystone project link for previews/tests.
+const LINK = "https://app.keystone.example/projects/demo";
 
 // One template per notification (email + inbox content). Slug = category slug, so
 // the workflow→template→category triple lines up.
@@ -214,8 +214,8 @@ function emailHtml(n) {
   return `<div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
   <p style="font-size:14px;color:#475569">Hi {{$recipient.name}},</p>
   <p style="font-size:15px;line-height:1.5">${n.line}</p>
-  <p style="margin-top:24px"><a href="{{project_link}}" style="background:#5350F0;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-size:14px">Open in Accolade</a></p>
-  <p style="font-size:12px;color:#94a3b8;margin-top:28px">Sent by your innovation team via Accolade.</p>
+  <p style="margin-top:24px"><a href="{{project_link}}" style="background:#5350F0;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-size:14px">Open in Keystone</a></p>
+  <p style="font-size:12px;color:#94a3b8;margin-top:28px">Sent by your innovation team via Keystone.</p>
 </div>`;
 }
 
@@ -256,9 +256,9 @@ ${items}
   <tr>
     <td style="padding:24px 40px 32px 40px;">
       <table role="presentation" cellpadding="0" cellspacing="0">
-        <tr><td style="background-color:#5350F0;border-radius:6px;"><a href="{{{$batched_events.[0].project_link}}}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">Open in Accolade</a></td></tr>
+        <tr><td style="background-color:#5350F0;border-radius:6px;"><a href="{{{$batched_events.[0].project_link}}}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">Open in Keystone</a></td></tr>
       </table>
-      <p style="margin:20px 0 0 0;font-size:12px;color:#9a9ea6;">Sent by your innovation team via Accolade.</p>
+      <p style="margin:20px 0 0 0;font-size:12px;color:#9a9ea6;">Sent by your innovation team via Keystone.</p>
     </td>
   </tr>
 </table>
@@ -275,7 +275,7 @@ function slackBlocks(n) {
     return [
       { type: "section", text: { type: "mrkdwn", text: "*{{actor_name}}* tagged you on *{{$brand.brand_name}}*" } },
       { type: "section", text: { type: "mrkdwn", text: "“{{comment_body}}”" } },
-      { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Open in Accolade" }, url: "{{project_link}}" }] },
+      { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Open in Keystone" }, url: "{{project_link}}" }] },
     ];
   }
   if (n.slug === "comment-added") {
@@ -285,7 +285,7 @@ function slackBlocks(n) {
       { type: "section", text: { type: "mrkdwn", text: "*{{$batched_events.[0].comment_author}}* commented on *{{$brand.brand_name}}*" } },
       { type: "section", text: { type: "mrkdwn", text: "“{{$batched_events.[0].comment_body}}”" } },
       // batched context → no top-level project_link; use the first event's link.
-      { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Open in Accolade" }, url: "{{$batched_events.[0].project_link}}" }] },
+      { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Open in Keystone" }, url: "{{$batched_events.[0].project_link}}" }] },
     ];
   }
   return null;
