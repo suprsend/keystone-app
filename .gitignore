@@ -16,6 +16,7 @@ keys.txt
 keysv2.txt
 
 # os / editor
+.claude/
 .DS_Store
 *.pem
 npm-debug.log*
@@ -23,6 +24,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local backups & internal working files (not for public repo)
+BACKEND_CHANGES.md
 /_backup/
 test-tracker.csv
 test-tracker-how-to.csv

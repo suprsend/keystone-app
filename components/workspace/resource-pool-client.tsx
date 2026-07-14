@@ -107,7 +107,7 @@ function Body() {
               size="sm"
               variant="outline"
               onClick={() => toast("Add User — coming soon")}
-              className="border-[var(--nav-active-border)] bg-[var(--nav-active)] text-amber-900 hover:bg-[#f6ead0] hover:text-amber-900"
+              className="border-[var(--nav-active-border)] bg-[var(--nav-active)] text-foreground hover:bg-muted hover:text-foreground"
             >
               <Plus className="size-4" />
               Add User
@@ -148,18 +148,18 @@ function Body() {
                   it oversees every project and can't be added to one. */}
               {admin && (
                 <tr className="border-b border-[var(--nav-active-border)] bg-[var(--nav-active)]">
-                  <td className="px-4 py-3 font-mono text-xs text-amber-900/80">{admin.distinctId}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{admin.distinctId}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <Shield className="size-4 text-amber-900" />
-                      <span className="font-semibold text-amber-950">{admin.name}</span>
-                      <span className="rounded-full border border-[var(--nav-active-border)] bg-white/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900">
+                      <Shield className="size-4 text-foreground" />
+                      <span className="font-semibold text-foreground">{admin.name}</span>
+                      <span className="rounded-full border border-[var(--nav-active-border)] bg-background/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground">
                         Workspace Admin
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-amber-900/80">{admin.email ?? "—"}</td>
-                  <td className="px-4 py-3 text-right text-xs font-medium text-amber-900">All projects</td>
+                  <td className="px-4 py-3 text-muted-foreground">{admin.email ?? "—"}</td>
+                  <td className="px-4 py-3 text-right text-xs font-medium text-foreground">All projects</td>
                 </tr>
               )}
               {rows.map((u) => (

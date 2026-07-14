@@ -332,7 +332,7 @@ export function DigestFrequency({
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
         <span>Workspace default: {digestSummary(defaultOpt)}</span>
         {isOverridden && (
-          <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-700">overriding default</span>
+          <span className="rounded bg-secondary px-1 py-0.5 font-medium text-secondary-foreground">overriding default</span>
         )}
         {isOverridden && onReset && (
           <button

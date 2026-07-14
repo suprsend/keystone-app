@@ -38,7 +38,7 @@ export function Sidebar() {
   if (!nav) return null;
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-white px-3 py-4 md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-background px-3 py-4 md:flex">
       {nav.map((item) => {
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
         const Icon = item.icon;
@@ -50,7 +50,7 @@ export function Sidebar() {
               ITEM_BASE,
               active
                 ? "rounded-l-none border-[var(--nav-active-border)] bg-[var(--nav-active)] text-foreground"
-                : "border-transparent text-slate-600 hover:bg-[var(--nav-active-hover)] hover:text-foreground",
+                : "border-transparent text-muted-foreground hover:bg-[var(--nav-active-hover)] hover:text-foreground",
             )}
           >
             <Icon className="size-4" />

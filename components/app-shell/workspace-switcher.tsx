@@ -17,7 +17,7 @@ function Tile({ ws, className }: { ws: Workspace; className?: string }) {
   return (
     <span
       className={cn(
-        "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white text-[10px] font-bold",
+        "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background text-[10px] font-bold",
         className,
       )}
       style={{ color: ws.accent }}
@@ -47,7 +47,7 @@ export function WorkspaceSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-white px-1.5 text-[13px] font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+      <DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-1.5 text-[13px] font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
         <Tile ws={active} className="size-5 rounded" />
         <span className="text-[10px] font-normal text-muted-foreground">Customer</span>
         <span className="max-w-32 truncate">{active.label}</span>

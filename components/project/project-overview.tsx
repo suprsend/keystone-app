@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { BarChart3, Plus, ListTodo, MessageSquare, Wallet } from "lucide-react";
+import { Plus, ListTodo, MessageSquare, Wallet } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { avatarColor, initials } from "@/lib/people";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,6 @@ export function ProjectOverview({ id }: { id: string }) {
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-          <DashboardPanel />
           <CostBudgetPanel tenant={id} canManage={canManage} />
         </div>
         <CommentsPanel tenant={id} actorId={actorId} canComment />
@@ -153,49 +152,6 @@ function CostBudgetPanel({ tenant, canManage }: { tenant: string; canManage: boo
       ) : (
         <p className="text-sm text-muted-foreground">{cost === null ? "Not set." : `$${cost.toLocaleString("en-US")} USD`}</p>
       )}
-    </div>
-  );
-}
-
-// Hardcoded project dashboard (decorative) — a simple progress line graph.
-const POINTS = [25, 38, 34, 52, 60, 71, 85]; // % complete over the last 7 weeks
-const LABELS = ["W1", "W2", "W3", "W4", "W5", "W6", "W7"];
-
-function DashboardPanel() {
-  const W = 300;
-  const H = 120;
-  const pad = 8;
-  const stepX = (W - pad * 2) / (POINTS.length - 1);
-  const xy = (v: number, i: number) => [pad + i * stepX, H - pad - (v / 100) * (H - pad * 2)];
-  const line = POINTS.map((v, i) => `${i === 0 ? "M" : "L"}${xy(v, i).join(",")}`).join(" ");
-  const [, lastY] = xy(POINTS[POINTS.length - 1], POINTS.length - 1);
-  const area = `${line} L${W - pad},${H - pad} L${pad},${H - pad} Z`;
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-1 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          <BarChart3 className="size-4 text-muted-foreground" /> Progress
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700">
-            Dummy
-          </span>
-        </h3>
-        <span className="text-sm font-semibold text-[var(--brand-blue)]">85%</span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H + 16}`} className="w-full" role="img" aria-label="Project progress over time">
-        <path d={area} fill="var(--brand-blue)" opacity="0.12" />
-        <path d={line} fill="none" stroke="var(--brand-blue)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {POINTS.map((v, i) => {
-          const [x, y] = xy(v, i);
-          return <circle key={i} cx={x} cy={y} r={i === POINTS.length - 1 ? 3.5 : 2} fill="var(--brand-blue)" />;
-        })}
-        {LABELS.map((l, i) => (
-          <text key={l} x={xy(0, i)[0]} y={H + 10} textAnchor="middle" fontSize="9" fill="var(--muted-foreground)">
-            {l}
-          </text>
-        ))}
-        <text x={W - pad} y={lastY - 6} textAnchor="end" fontSize="9" fill="var(--muted-foreground)" />
-      </svg>
     </div>
   );
 }

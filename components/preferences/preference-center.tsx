@@ -13,7 +13,6 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHANNEL_ICON, CHANNEL_LABEL } from "@/lib/message-display";
 import { DigestFrequency, DigestPill, type DigestChoice, type DigestOption, resolveDigestChoice, digestSummary } from "@/components/preferences/digest-frequency";
-import { DummyChannelSwitch } from "@/components/preferences/dummy-channel";
 import { cn } from "@/lib/utils";
 
 // Shared notification preference center for ONE subscriber. Used by both
@@ -305,17 +304,13 @@ function CategoryRow({
                 className="flex w-10 justify-center"
                 title={editable ? label : `${label} — required, can’t change`}
               >
-                {ch.channel === "slack" ? (
-                  <DummyChannelSwitch size="sm" />
-                ) : (
-                  <Switch
-                    size="sm"
-                    checked={categoryOn && on}
-                    disabled={!categoryOn || !editable}
-                    onCheckedChange={() => onToggleChannel(ch)}
-                    aria-label={`${label} for ${cat.name}`}
-                  />
-                )}
+                <Switch
+                  size="sm"
+                  checked={categoryOn && on}
+                  disabled={!categoryOn || !editable}
+                  onCheckedChange={() => onToggleChannel(ch)}
+                  aria-label={`${label} for ${cat.name}`}
+                />
               </span>
             );
           })}

@@ -26,7 +26,6 @@ import {
 import { useAppState } from "@/components/providers";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { NewTemplateButton } from "@/components/templates/new-template-button";
 import { TemplateDetailDialog } from "@/components/templates/template-detail-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -138,7 +137,6 @@ function TemplatesBody() {
       <PageHeader
         title="Message Templates"
         description="The messages your workflows send — email and in-app inbox."
-        actions={<NewTemplateButton />}
       />
 
       {error && (
@@ -158,7 +156,6 @@ function TemplatesBody() {
           icon={FileText}
           title="No templates yet"
           description="Templates are authored in SuprSend; the ones your workflows send appear here to preview."
-          action={<NewTemplateButton />}
         />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border">

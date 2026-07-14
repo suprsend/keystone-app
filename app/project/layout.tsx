@@ -9,7 +9,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   return (
     <div className="flex h-svh flex-col overflow-hidden">
       <TopBar />
-      <main className="flex w-full flex-1 flex-col gap-6 overflow-y-auto bg-[#f2f2f2] px-6 py-6 lg:px-8">
+      <main className="flex w-full flex-1 flex-col gap-6 overflow-y-auto bg-muted px-6 py-6 lg:px-8">
         {children}
       </main>
       <AppFooter />

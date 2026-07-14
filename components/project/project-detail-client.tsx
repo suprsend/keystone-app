@@ -122,7 +122,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
                 key={t.key}
                 aria-disabled
                 title="Not part of this demo"
-                className="-mb-px cursor-default whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#aab4bd]"
+                className="-mb-px cursor-default whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
               >
                 {t.label}
               </span>

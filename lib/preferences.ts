@@ -3,13 +3,7 @@
 // preference center). Pure — safe to import from server or client.
 
 /** Channels exposed in the preference tables. The product delivers/tests on these. */
-export const PREF_CHANNELS: readonly string[] = ["email", "inbox", "slack"];
-
-/** The Teams channel (internal key `slack`) is a DEMO PLACEHOLDER — no real delivery
- * wired. Shown as a tooltip wherever the Teams icon/toggle appears. */
-export const TEAMS_CHANNEL_KEY = "slack";
-export const TEAMS_NOTE =
-  "Demo placeholder — live Teams delivery isn’t wired up in this example app, but it can be set up.";
+export const PREF_CHANNELS: readonly string[] = ["email", "inbox"];
 
 /** Preference value → human label, shared by the admin preference tables. */
 export const PREF_LABEL: Record<string, string> = {

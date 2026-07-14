@@ -1,5 +1,5 @@
 {
-  "name": "wellspring-demo-app",
+  "name": "keystone-demo-app",
   "version": "0.1.0",
   "private": true,
   "description": "Wellspring (Accolade) notification settings on SuprSend — customer-per-workspace × project-per-tenant, admin notification catalog, per-project subscriptions + PM management, object fan-out, email/inbox/Slack.",

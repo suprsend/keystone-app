@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Settings, LogOut, UserCog } from "lucide-react";
+import { LogOut, UserCog } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +16,8 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-// The user-profile button (top-right avatar). Opens a menu with a Settings entry
-// that navigates to the Account → Notifications page (a real page, not a modal).
+// The user-profile button (top-right avatar).
 export function AccountMenu() {
-  const router = useRouter();
   const { actorId, users } = useAppState();
   const isAdmin = actorId === ADMIN_ACTOR;
   const me = users.find((u) => u.distinctId === actorId);
@@ -30,7 +27,7 @@ export function AccountMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="flex size-8 items-center justify-center rounded-full bg-[#e4e8ec] text-[12px] font-bold text-[#3a4a5a] outline-none transition-colors hover:bg-[#d6dce1] focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex size-8 items-center justify-center rounded-full bg-secondary text-[12px] font-bold text-secondary-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Account menu"
       >
         {initial}
@@ -43,10 +40,6 @@ export function AccountMenu() {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => router.push("/account/notifications")} className="gap-2">
-          <Settings className="size-4 text-muted-foreground" />
-          Settings
-        </DropdownMenuItem>
         <DropdownMenuItem className="gap-2 text-muted-foreground" disabled>
           <UserCog className="size-4" />
           Profile

@@ -17,7 +17,6 @@ import { ConditionsCell, type Condition } from "@/components/admin/conditions-ce
 import { DigestFrequency, DigestPill, type DigestOption, type DigestChoice, defaultDigestSchedule, resolveDigestChoice, digestSummary } from "@/components/preferences/digest-frequency";
 import { CHANNEL_LABEL } from "@/lib/message-display";
 import { PREF_CHANNELS, PREF_LABEL, groupBySection } from "@/lib/preferences";
-import { DummyChannelSwitch } from "@/components/preferences/dummy-channel";
 import { useCollapsibleSections, SectionHeaderRow, HeaderTip, ChannelHeaderIcons } from "@/components/preferences/section-table";
 import { cn } from "@/lib/utils";
 
@@ -602,9 +601,7 @@ function Body() {
                               const on = has && !r.blockedChannels.includes(ch);
                               return (
                                 <span key={ch} className="flex w-10 justify-center" title={CHANNEL_LABEL[ch] ?? ch}>
-                                  {ch === "slack" ? (
-                                    <DummyChannelSwitch size="sm" />
-                                  ) : has ? (
+                                  {has ? (
                                     <Switch
                                       size="sm"
                                       checked={on}

@@ -49,7 +49,7 @@ export interface Tenant {
 }
 
 export const TENANTS: Tenant[] = [
-  // ── Honeywell projects ──────────────────────────────────────────────────────
+  // ── Acme projects ───────────────────────────────────────────────────────────
   {
     id: "honeywell-aero",
     workspace: "wellspring-honeywell",
@@ -80,13 +80,13 @@ export const TENANTS: Tenant[] = [
     npv: 24180,
     nextGate: "Jun 30, 2026",
   },
-  // ── Hershey projects ───────────────────────────────────────────────────────
+  // ── Globex projects ─────────────────────────────────────────────────────────
   {
     id: "hsy-reeses",
     workspace: "wellspring-hershey",
-    label: "Reese's Zero-Sugar",
-    fullName: "Reese's Zero-Sugar Line Extension",
-    initial: "R",
+    label: "Zero-Sugar Bar",
+    fullName: "Zero-Sugar Bar — Line Extension",
+    initial: "Z",
     logo: "",
     accent: "#ED7902",
     accentForeground: "#ffffff",
@@ -99,9 +99,9 @@ export const TENANTS: Tenant[] = [
   {
     id: "hsy-kisses",
     workspace: "wellspring-hershey",
-    label: "Hershey Kisses",
-    fullName: "Hershey Kisses",
-    initial: "HK",
+    label: "Foil-Wrapped Minis",
+    fullName: "Foil-Wrapped Minis",
+    initial: "FM",
     logo: "",
     accent: "#7C3AED",
     accentForeground: "#ffffff",

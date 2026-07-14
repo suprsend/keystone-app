@@ -34,7 +34,7 @@ export function ViewingAs({ includeAdmin = false }: { includeAdmin?: boolean } =
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-white px-2 text-[13px] outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+      <DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-[13px] outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
         {isAdmin ? <Shield className="size-3.5 text-muted-foreground" /> : <User className="size-3.5 text-muted-foreground" />}
         <span className="text-muted-foreground">Viewing as</span>
         <span className="font-medium">{label}</span>

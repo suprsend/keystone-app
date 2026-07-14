@@ -60,7 +60,7 @@ export function SearchProjects() {
 
   return (
     <div ref={ref} className="relative hidden md:block">
-      <div className="flex items-center rounded-md border border-border bg-white pl-2 text-sm">
+      <div className="flex items-center rounded-md border border-border bg-background pl-2 text-sm">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <input
           value={q}

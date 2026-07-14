@@ -4,7 +4,7 @@ import * as React from "react";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CHANNEL_ICON, CHANNEL_LABEL } from "@/lib/message-display";
-import { PREF_CHANNELS, TEAMS_CHANNEL_KEY, TEAMS_NOTE } from "@/lib/preferences";
+import { PREF_CHANNELS } from "@/lib/preferences";
 
 /**
  * A column header label with a small info icon that explains the column on hover.
@@ -35,9 +35,7 @@ export function HeaderTip({ label, tip }: { label: string; tip: string }) {
 }
 
 /**
- * The channel icons shown in a preference-table header (Email / Inbox / Teams).
- * Teams is a demo placeholder, so its icon carries a hover tooltip saying so — the
- * same way Active / Default / Except headers explain themselves via {@link HeaderTip}.
+ * The channel icons shown in a preference-table header (Email / Inbox).
  */
 export function ChannelHeaderIcons() {
   return (
@@ -45,33 +43,9 @@ export function ChannelHeaderIcons() {
       {PREF_CHANNELS.map((ch) => {
         const Icon = CHANNEL_ICON[ch];
         const label = CHANNEL_LABEL[ch] ?? ch;
-        const glyph = Icon ? <Icon className="size-4 text-foreground" /> : <>{label}</>;
-        if (ch !== TEAMS_CHANNEL_KEY) {
-          return (
-            <span key={ch} className="flex w-10 justify-center" title={label} aria-label={label}>
-              {glyph}
-            </span>
-          );
-        }
-        // Teams = demo placeholder → render its icon with a small ℹ info button
-        // beside it, exactly like the Active / Default / Except headers (HeaderTip).
         return (
-          <span key={ch} className="flex w-10 items-center justify-center gap-1" aria-label={label}>
-            {glyph}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`What “${label}” means`}
-                    className="text-muted-foreground/60 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
-                  >
-                    <Info className="size-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{TEAMS_NOTE}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <span key={ch} className="flex w-10 justify-center" title={label} aria-label={label}>
+            {Icon ? <Icon className="size-4 text-foreground" /> : <>{label}</>}
           </span>
         );
       })}

@@ -245,7 +245,7 @@ function Body() {
               size="sm"
               variant="outline"
               onClick={() => toast("Add New — coming soon")}
-              className="border-[var(--nav-active-border)] bg-[var(--nav-active)] text-amber-900 hover:bg-[#f6ead0] hover:text-amber-900"
+              className="border-[var(--nav-active-border)] bg-[var(--nav-active)] text-foreground hover:bg-muted hover:text-foreground"
             >
               <Plus className="size-4" />
               Add New
