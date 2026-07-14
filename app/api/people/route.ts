@@ -3,9 +3,10 @@ import { errMsg } from "@/lib/server/http";
 import { getActiveWorkspace } from "@/lib/server/workspace";
 import { listUsers, getProjectRoles, listProjects } from "@/lib/server/users";
 
-// Projects + people for the "Viewing as" switcher and the Projects list — ALL sourced
+// Projects + people for the "Viewing as" switcher and the Projects list — sourced
 // from SuprSend: the project objects that EXIST in this workspace, and each object's
-// subscriptions. Scoped to the active customer. Nothing read from a hardcoded list.
+// subscriptions. Scoped to the active customer. Without workspace keys these reads
+// return empty (an honest empty state) — there is no hardcoded fallback here.
 export async function GET() {
   try {
     const ws = await getActiveWorkspace();
