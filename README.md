@@ -49,12 +49,13 @@ renders empty. Run `provision.mjs` once per workspace to populate it, then the a
 
 ## Part 1 — Architecture: how Keystone maps to SuprSend
 
-Accolade is **B2B2B2C**: Wellspring (the vendor) sells to **customers**; each customer runs **projects**;
-each project has **people**. SuprSend has its own primitives. The whole integration is this mapping:
+Keystone is a project-management product used by multiple **customers**; each customer runs **projects**,
+and each project has **people**. Each customer is its own SuprSend **workspace**. The whole integration is
+this mapping:
 
-| In Accolade (what the user sees) | In SuprSend (what we create) | Why |
+| In Keystone (what the user sees) | In SuprSend (what we create) | Why |
 |---|---|---|
-| **Customer** — e.g. Honeywell, Hershey | **Workspace** | One workspace per customer = full data isolation, its own API keys, its own brand. |
+| **Customer** — e.g. Acme, Globex | **Workspace** | One workspace per customer = full data isolation, its own API keys, its own brand. |
 | **Project** | **Tenant** *and* **Object**, created together | The **Tenant** holds the project's brand + per-project preferences. The **Object** holds the team roster — each member is subscribed to it with a role, so one trigger can notify everyone on the project. |
 | **Notification type** — “Project Started”, “Task Completed”… | A **workflow**, filed under a **preference category** | The workflow is what sends the notification. Its category is the on/off switch a person controls; related notification types can share one category. |
 | **Person** — a team member | **User** (`distinct_id`) | The recipient of notifications. |
@@ -84,8 +85,8 @@ Two things to keep straight:
 - **Viewing as** impersonates a **person** (or the Admin). Screens are scoped to whoever you're viewing as.
 
 ```
-Wellspring (vendor)
-└── Customer = Workspace            (Honeywell, Hershey)
+Keystone (product)
+└── Customer = Workspace            (Acme, Globex)
     └── Project = Tenant + Object   (brand/prefs + team roster)
         └── Person = User           (subscribed to the project object, with a role)
 ```
@@ -150,13 +151,12 @@ Secrets never reach the browser; `.env.local` and `keys.txt` are gitignored.
 
 ### Channels
 
-Three channels appear throughout the app (templates, workflows, preference toggles):
+Two channels appear throughout the app (templates, workflows, preference toggles):
 
 | Channel | Status |
 |---|---|
 | **Email** | Live — actually delivered. |
 | **In-app Inbox** | Live — the bell in the header, powered by the browser React SDK. |
-| **Teams** | **Dummy toggle. Not functional — nothing is delivered.** It appears as a Microsoft Teams channel you can toggle, but there is no Teams (or Slack) delivery wired. The internal channel key is still `slack` in templates/workflows/preferences; `lib/message-display.ts` just relabels it "Teams." |
 
 ---
 
@@ -164,7 +164,7 @@ Three channels appear throughout the app (templates, workflows, preference toggl
 
 ### Two switchers, always in the header
 
-- **Workspace switcher** — picks the active **customer** (Honeywell / Hershey). Everything below reloads
+- **Workspace switcher** — picks the active **customer** (Acme / Globex). Everything below reloads
   against that customer's SuprSend workspace and keys.
 - **Viewing as** — picks **who you are**: the Admin, or a specific person on a project. The app has no
   login; it gates each screen by the role of whoever you're viewing as.
@@ -191,9 +191,9 @@ Three channels appear throughout the app (templates, workflows, preference toggl
 | **Administer** | Brand | `/admin/brand` | Admin |
 | **Administer** | Logs | `/admin/executions` | Admin |
 | **Workspace** | Resource Pool | `/workspace/resource-pool` | Admin |
-| **Account** | Notifications | `/account/notifications` | A person (their own settings) |
 | (header) | Inbox bell | — | A person — their own in-app inbox; not shown for the Admin view |
-| (header) | Dashboard | `/admin/dashboard` | Placeholder tile — static, no data, not a real screen |
+
+The app opens on **Manage → Projects** (`/project`). Customer + Viewing-as switchers live in the header.
 
 The **+ Project** button (header) opens the add-project dialog → `/api/admin/create-project`.
 The **Inbox bell** is the browser React SDK `<Inbox>`, authed by `/api/subscriber-token` (ES256 JWT,
@@ -262,21 +262,13 @@ Open to the project's members (and Admin). What you can *do* depends on your rol
 - **What it does:** the customer's full people roster and which projects each person is on.
 - **Calls:** `/api/people` (Node SDK objects + subscriptions) and `/api/admin/project-members`.
 
-### Account → Notifications — `/account/notifications`
-
-- **What it does:** the channel settings for the person you're currently viewing as, listed by notification
-  type. (Same data as a project's "My Settings," surfaced under the Account area.)
-- **Calls:** `/api/admin/preference-config` → **Management API** (the category list + allowed options);
-  reads/writes go through `/api/user-preferences` (subscriber preferences).
-
 ---
 
 ## Repository layout
 
 ```
-app/admin     Administer surfaces (templates, preferences, brand, logs, dashboard)
+app/admin     Administer surfaces (templates, preferences, brand, logs)
 app/project   Manage surfaces (projects list + project detail)
-app/account   per-person account surfaces
 app/workspace resource pool
 app/api       route handlers — where every secret-bearing SuprSend call is made
 lib/server    server-only SuprSend access (Node SDK + Management API + signed Hub REST)
