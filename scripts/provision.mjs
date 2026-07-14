@@ -14,6 +14,11 @@
 // The tenants/users stages are idempotent upserts and safe to re-run.
 
 import pkg from "@suprsend/node-sdk";
+// Sample seed data — a real deployment reads people from its own DB and syncs them
+// to SuprSend via this script. The demo roster (ids/names/roles per project) is the
+// single source of truth in lib/roster-seed.json, shared with the app (lib/people.ts)
+// so provisioning and the running app never diverge.
+import rosterSeed from "../lib/roster-seed.json" with { type: "json" };
 const Suprsend = pkg.Suprsend ?? pkg.default?.Suprsend ?? pkg.default ?? pkg;
 
 // EMAIL SAFETY: every address routes to the ONE safe inbox via plus-addressing —
@@ -22,8 +27,7 @@ const Suprsend = pkg.Suprsend ?? pkg.default?.Suprsend ?? pkg.default ?? pkg;
 const SAFE_EMAIL_USER = process.env.SAFE_TEST_EMAIL_USER || "nikita";
 const SAFE_EMAIL_DOMAIN = process.env.SAFE_TEST_EMAIL_DOMAIN || "suprsend.com";
 const safeMail = (local) => `${SAFE_EMAIL_USER}+${local}@${SAFE_EMAIL_DOMAIN}`;
-const HON = "acme";
-const HSY = "globex";
+const ROSTER = rosterSeed.roster;
 
 // Object type for projects (project = object, for recipient fan-out + roles).
 const OBJECT_TYPE = "project";
@@ -64,14 +68,18 @@ const recipientTags = (slug) => (RECIPIENTS[slug] ?? []).map((r) => `recip:${rol
 // that from the object, so the app triggers those to the specific recipient(s).
 const OBJECT_NOTIFS = new Set(["project-started", "project-paused", "comment-added", "task-completed"]);
 
-// A project's team. Email ALWAYS plus-addresses to the safe inbox so test sends reach
-// only us (see safeMail above). `_label` is kept for readability of the call sites.
-function team(_label, rows) {
-  return rows.map(([id, name, role]) => ({ id, name, email: safeMail(name.toLowerCase().replace(/\s+/g, ".")), role }));
+// A project's team, built from the shared seed (lib/roster-seed.json) by tenant id.
+// Email ALWAYS plus-addresses to the safe inbox so test sends reach only us (see
+// safeMail above); it's derived from the name to match lib/people.ts exactly.
+function team(tenantId) {
+  return (ROSTER[tenantId] ?? []).map(({ id, name, role }) => ({
+    id, name, email: safeMail(name.toLowerCase().replace(/\s+/g, ".")), role,
+  }));
 }
 
 // One block per customer workspace. envPrefix mirrors lib/server/workspace.ts.
-// Each tenant (= project) carries its team; users are the union of all teams.
+// Each tenant (= project) carries its team (from the seed); users are the union of
+// all teams. Tenant name/brand colours are provisioning-only config and live here.
 const WORKSPACES = [
   {
     slug: "acme",
@@ -80,28 +88,8 @@ const WORKSPACES = [
     // {{$brand.*}} fallback shown in Admin → Branding. The customer's own brand.
     defaultBrand: { name: "Acme", primary: "#2563EB", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
-      {
-        id: "acme-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81",
-        members: team(HON, [
-          ["u_dana_carter", "Dana Carter", "Project Manager"],
-          ["u_marcus_hale", "Marcus Hale", "Project Sponsor"],
-          ["u_karen_brooks", "Karen Brooks", "Process Owner"],
-          ["u_evan_cole", "Evan Cole", "Team Member"],
-          ["u_sarah_bennett", "Sarah Bennett", "Team Member"],
-          ["u_luke_harper", "Luke Harper", "Team Member"],
-        ]),
-      },
-      {
-        id: "acme-bms", name: "Building Technologies — Smart Controls v4", primary: "#00857A",
-        members: team(HON, [
-          ["u_grace_miller", "Grace Miller", "Project Manager"],
-          ["u_tom_freed", "Tom Freed", "Project Sponsor"],
-          ["u_nancy_reed", "Nancy Reed", "Process Owner"],
-          ["u_ben_stark", "Ben Stark", "Team Member"],
-          ["u_mia_foster", "Mia Foster", "Team Member"],
-          ["u_owen_daniels", "Owen Daniels", "Team Member"],
-        ]),
-      },
+      { id: "acme-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81", members: team("acme-aero") },
+      { id: "acme-bms", name: "Building Technologies — Smart Controls v4", primary: "#00857A", members: team("acme-bms") },
     ],
   },
   {
@@ -109,28 +97,8 @@ const WORKSPACES = [
     prefix: "SUPRSEND_GLOBEX",
     defaultBrand: { name: "Globex", primary: "#0F766E", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
-      {
-        id: "globex-bar", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902",
-        members: team(HSY, [
-          ["u_riley_fox", "Riley Fox", "Project Manager"],
-          ["u_dale_burns", "Dale Burns", "Project Sponsor"],
-          ["u_amy_sullivan", "Amy Sullivan", "Process Owner"],
-          ["u_carl_hayes", "Carl Hayes", "Team Member"],
-          ["u_jade_morgan", "Jade Morgan", "Team Member"],
-          ["u_paul_nash", "Paul Nash", "Team Member"],
-        ]),
-      },
-      {
-        id: "globex-minis", name: "Foil-Wrapped Minis", primary: "#7C3AED",
-        members: team(HSY, [
-          ["u_iris_lane", "Iris Lane", "Project Manager"],
-          ["u_greg_pope", "Greg Pope", "Project Sponsor"],
-          ["u_laura_west", "Laura West", "Process Owner"],
-          ["u_zach_allen", "Zach Allen", "Team Member"],
-          ["u_tara_vance", "Tara Vance", "Team Member"],
-          ["u_noah_bishop", "Noah Bishop", "Team Member"],
-        ]),
-      },
+      { id: "globex-bar", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902", members: team("globex-bar") },
+      { id: "globex-minis", name: "Foil-Wrapped Minis", primary: "#7C3AED", members: team("globex-minis") },
     ],
   },
 ];
