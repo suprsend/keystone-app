@@ -1,6 +1,11 @@
 // Keystone provisioning — creates SuprSend resources in each customer workspace.
 // Run: node --env-file=.env.local scripts/provision.mjs [stage]
-// Stages: tenants | users | all (default: all)
+// Stages: tenants | users | objects | categories | templates | workflows | all (default: all)
+//
+// DevEx bootstrap: `workspaces` (standalone) creates the workspaces themselves from
+// an account service token and scaffolds .env.local — run it FIRST, paste the keys it
+// can't auto-fill, then run `all`. It is NOT part of `all` (the stages below need the
+// per-workspace key/secret). See createWorkspaces() below.
 //
 // ⚠️ NOT a safe blind re-run for the `templates`/`workflows` stages:
 //   • templates: re-pushes the raw-HTML templates here → OVERWRITES any Visual
@@ -14,6 +19,7 @@
 // The tenants/users stages are idempotent upserts and safe to re-run.
 
 import pkg from "@suprsend/node-sdk";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 // Sample seed data — a real deployment reads people from its own DB and syncs them
 // to SuprSend via this script. The demo roster (ids/names/roles per project) is the
 // single source of truth in lib/roster-seed.json, shared with the app (lib/people.ts)
@@ -294,6 +300,10 @@ function toJsonnet(v) {
 }
 
 const stage = process.argv[2] ?? "all";
+// `workspaces` is a standalone DevEx stage (create the workspaces from an account
+// token) — NOT part of `all`, because the provisioning stages below need each
+// workspace's key/secret, which only exist AFTER the dashboard key-gen + env paste.
+const doWorkspaces = stage === "workspaces";
 const doTenants = stage === "all" || stage === "tenants";
 const doUsers = stage === "all" || stage === "users";
 const doObjects = stage === "all" || stage === "objects";
@@ -323,10 +333,125 @@ function clientFor(prefix) {
   return base_url ? new Suprsend(key, secret, { base_url }) : new Suprsend(key, secret);
 }
 
-for (const ws of WORKSPACES) {
-  console.log(`\n=== ${ws.slug} ===`);
-  const c = clientFor(ws.prefix);
-  const slackUrl = process.env[`${ws.prefix}_SLACK_WEBHOOK`];
+// ── Workspace creation (DevEx) ────────────────────────────────────────────────
+// `node scripts/provision.mjs workspaces` — create each customer workspace from an
+// ACCOUNT service token, then scaffold the local env so a dev supplies only the
+// token and pastes the rest once.
+//
+// Per the Create Workspace API (https://docs.suprsend.com/reference/create-workspace)
+// the response is workspace METADATA only (uid, slug, mode) — it does NOT return the
+// workspace key/secret, public key, or signing key. Those are generated in the
+// dashboard (Developers → API Keys) and can't be fetched programmatically, so this
+// step records what the API gives us and writes empty, clearly-labelled placeholders
+// for the rest (never overwriting a value already in .env.local).
+//
+// Two-phase by necessity: (1) run `workspaces` to create + scaffold, (2) paste the
+// keys into .env.local, then run the normal stages to provision.
+async function createWorkspaces() {
+  const token = process.env.SUPRSEND_SERVICE_TOKEN;
+  if (!token) {
+    console.error("✗ SUPRSEND_SERVICE_TOKEN is required to create workspaces (Account → Service Tokens).");
+    process.exit(1);
+  }
+  const mgmt = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
+  const hdr = { Authorization: `ServiceToken ${token}`, "Content-Type": "application/json" };
+
+  // Read existing .env.local so we only ADD missing vars (never clobber a paste).
+  const envPath = new URL("../.env.local", import.meta.url);
+  const existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
+  const existingKeys = new Set(
+    existing.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
+      .map((l) => (l.includes("=") ? l.slice(0, l.indexOf("=")).trim() : "")).filter(Boolean),
+  );
+  const blocks = [];
+
+  for (const ws of WORKSPACES) {
+    const name = ws.defaultBrand?.name || ws.slug;
+    console.log(`\n=== create workspace: ${name} (${ws.slug}) ===`);
+    let created = null;
+    try {
+      const res = await fetch(`${mgmt}/v1/workspace/`, {
+        method: "POST",
+        headers: hdr,
+        body: JSON.stringify({ name, description: `Keystone reference app — ${ws.slug} workspace` }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.log(`  ✗ create failed (HTTP ${res.status}) ${JSON.stringify(data).slice(0, 300)}`);
+      } else {
+        // The response is a (paginated) list of workspaces — match the one we just
+        // created by name to read back its uid/slug/mode.
+        const results = Array.isArray(data?.results) ? data.results : [];
+        created = results.find((w) => (w?.name || "").toLowerCase() === name.toLowerCase()) || null;
+        if (created) {
+          console.log(`  ✓ workspace uid=${created.uid} slug=${created.slug} mode=${created.mode}`);
+        } else {
+          console.log(`  ✓ request OK (HTTP ${res.status}) but "${name}" wasn't in the returned page — check the dashboard for its uid/slug.`);
+        }
+      }
+    } catch (e) {
+      console.log(`  ✗ create error: ${e?.message ?? e}`);
+    }
+
+    // Scaffold this workspace's env vars. The API returns none of these, so they're
+    // written empty for the dev to paste from Dashboard → Developers → API Keys.
+    const p = ws.prefix; // e.g. SUPRSEND_ACME
+    const pub = `NEXT_PUBLIC_SUPRSEND_${ws.slug.replace(/-/g, "_").toUpperCase()}`;
+    const meta = created ? `uid=${created.uid} slug=${created.slug} mode=${created.mode}` : "created (see dashboard)";
+    blocks.push({
+      header:
+        `# ── ${name} workspace — ${meta} ──\n` +
+        `# Required: paste WORKSPACE_KEY, WORKSPACE_SECRET (shown once), and PUBLIC_KEY.\n` +
+        `# Optional: SIGNING_KEY_* (in-app template editor JWT), SLACK_WEBHOOK (Slack delivery).`,
+      vars: [
+        `${p}_WORKSPACE_KEY`,
+        `${p}_WORKSPACE_SECRET`,
+        `${pub}_PUBLIC_KEY`,
+        `${p}_SIGNING_KEY_ID`,
+        `${p}_SIGNING_KEY_B64`,
+        `${p}_SLACK_WEBHOOK`,
+      ],
+    });
+  }
+
+  // Merge into .env.local WITHOUT overwriting anything already set.
+  const append = [];
+  for (const b of blocks) {
+    const missing = b.vars.filter((k) => !existingKeys.has(k));
+    if (missing.length === 0) continue;
+    append.push("", b.header, ...missing.map((k) => `${k}=`));
+  }
+  if (!existingKeys.has("SUPRSEND_SERVICE_TOKEN")) {
+    append.unshift("", "# Account-level service token (management API):", "SUPRSEND_SERVICE_TOKEN=");
+  }
+
+  if (append.length) {
+    const sep = existing && !existing.endsWith("\n") ? "\n" : "";
+    writeFileSync(envPath, existing + sep + append.join("\n") + "\n");
+    const added = append.filter((l) => l.endsWith("=")).length;
+    console.log(`\n✓ Wrote env scaffolding to .env.local (${added} new var(s); existing values untouched).`);
+  } else {
+    console.log("\n✓ .env.local already has every workspace var — nothing to scaffold.");
+  }
+
+  console.log(
+    "\nNext steps:\n" +
+    "  1. Dashboard → Developers → API Keys (per workspace): paste WORKSPACE_KEY,\n" +
+    "     WORKSPACE_SECRET, and PUBLIC_KEY into .env.local.\n" +
+    "  2. Provision the workspaces:  node --env-file=.env.local scripts/provision.mjs\n" +
+    "\nWhy the paste step: the Create Workspace API returns only workspace metadata\n" +
+    "(uid/slug/mode); keys/secrets are dashboard-generated and aren't returned by any\n" +
+    "API, so they can't be auto-filled.",
+  );
+}
+
+if (doWorkspaces) {
+  await createWorkspaces();
+} else {
+  for (const ws of WORKSPACES) {
+    console.log(`\n=== ${ws.slug} ===`);
+    const c = clientFor(ws.prefix);
+    const slackUrl = process.env[`${ws.prefix}_SLACK_WEBHOOK`];
 
   if (doTenants) {
     for (const t of ws.tenants) {
@@ -614,6 +739,7 @@ for (const ws of WORKSPACES) {
         console.log(`  workflow ✗ ${n.slug}: ${e?.message ?? e}`);
       }
     }
+  }
   }
 }
 
