@@ -102,16 +102,6 @@ function Body() {
                 {rows.length} {rows.length === 1 ? "person" : "people"}
               </span>
             )}
-            {/* Decorative — unwired button kept for product fidelity; the real app has it. */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => toast("Add User — coming soon")}
-              className="border-[var(--nav-active-border)] bg-[var(--nav-active)] text-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Plus className="size-4" />
-              Add User
-            </Button>
           </div>
         }
       />

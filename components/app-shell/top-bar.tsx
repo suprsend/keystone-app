@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, HelpCircle, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppState, ADMIN_ACTOR } from "@/components/providers";
@@ -115,12 +115,6 @@ export function TopBar() {
             Project
           </Button>
           <SearchProjects />
-          <button
-            aria-label="Help"
-            className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <HelpCircle className="size-5" />
-          </button>
           <InboxBell />
           <AccountMenu />
         </div>

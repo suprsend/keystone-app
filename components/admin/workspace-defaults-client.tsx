@@ -240,16 +240,6 @@ function Body() {
             {rows !== null && (
               <span className="text-xs text-muted-foreground">{saving ? "Saving…" : savedUp ? "All changes saved" : ""}</span>
             )}
-            {/* Decorative — unwired button kept for product fidelity; the real app has it. */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => toast("Add New — coming soon")}
-              className="border-[var(--nav-active-border)] bg-[var(--nav-active)] text-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Plus className="size-4" />
-              Add New
-            </Button>
           </div>
         }
       />

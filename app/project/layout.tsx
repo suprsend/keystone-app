@@ -1,5 +1,4 @@
 import { TopBar } from "@/components/app-shell/top-bar";
-import { AppFooter } from "@/components/app-shell/app-footer";
 
 // Projects view — a project-scoped surface accessible to Admin, PM, and members.
 // The top bar carries the Project switcher + "Viewing as" (incl. Admin); role
@@ -12,7 +11,6 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       <main className="flex w-full flex-1 flex-col gap-6 overflow-y-auto bg-muted px-6 py-6 lg:px-8">
         {children}
       </main>
-      <AppFooter />
     </div>
   );
 }
