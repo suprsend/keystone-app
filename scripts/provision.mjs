@@ -435,14 +435,17 @@ async function createWorkspaces() {
       else console.log(`  ✗ public key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
     }
 
-    // 3) Signing key (in-app template editor JWT) → *_SIGNING_KEY_ID / _B64. Confirmed.
+    // 3) Signing key (in-app template editor JWT) → *_SIGNING_KEY_ID / _B64.
+    //    The editor JWT's `kid` must be the signing key's UID (`signing_key_…`), NOT
+    //    its `id` (`ws_signk_…`) — verified: management-api returns 401
+    //    "invalid JWT kid-header" for the id, and 200 for the uid.
     if (have.has(`${p}_SIGNING_KEY_ID`) && have.has(`${p}_SIGNING_KEY_B64`)) {
       console.log(`  • signing key already set — skipped`);
     } else {
       const r = await api("POST", `/v1/${slug}/ws_signing_key/`, {});
-      if (r.ok && r.data?.id && r.data?.private_key_base64) {
-        out.push(`${p}_SIGNING_KEY_ID=${r.data.id}`, `${p}_SIGNING_KEY_B64=${r.data.private_key_base64}`);
-        console.log(`  ✓ signing key created`);
+      if (r.ok && r.data?.uid && r.data?.private_key_base64) {
+        out.push(`${p}_SIGNING_KEY_ID=${r.data.uid}`, `${p}_SIGNING_KEY_B64=${r.data.private_key_base64}`);
+        console.log(`  ✓ signing key created (kid = uid ${r.data.uid})`);
       } else console.log(`  ✗ signing key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
     }
 
