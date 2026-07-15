@@ -21,29 +21,37 @@ This README has three parts. Read them in order:
 
 ## Setup
 
+Prerequisites: **Node.js 20+** and a **SuprSend account**.
+
 ```bash
 # 1 — Install
 npm install
 
-# 2 — Add your SuprSend keys
-cp .env.example .env.local     # fill in the keys (the file explains each one)
+# 2 — Add your SuprSend ACCOUNT token (the only value you fill in by hand)
+cp .env.example .env.local
+#    then open .env.local and paste your service token into SUPRSEND_SERVICE_TOKEN
+#    (SuprSend dashboard → Account Settings → Service Tokens)
 
-# 3 — Provision your workspace (ONE-TIME, per SuprSend workspace)
-#     Creates the tenants, users, objects, categories, templates, and
-#     workflows this app expects. Without this, a fresh workspace is empty.
+# 3 — Create the workspaces + their keys (writes them into .env.local for you)
+node --env-file=.env.local scripts/provision.mjs workspaces
+
+# 4 — Provision each workspace: tenants, users, objects, categories, templates, workflows
 node --env-file=.env.local scripts/provision.mjs
 
-# 4 — Run
+# 5 — Run
 npm run dev                    # http://localhost:3000
 ```
 
-**Step 3 is required.** The app *reads* its tenants / categories / workflows from SuprSend — it does
-**not** create them on startup. Point it at a workspace that hasn't been provisioned and every screen
-renders empty. Run `provision.mjs` once per workspace to populate it, then the app fetches live data.
+**Steps 3–4 are required.** Step 3 creates each workspace from your account token and auto-writes its
+public / signing / API keys into `.env.local` (via the Management API — nothing hand-copied). Step 4
+then populates each workspace, because the app *reads* its tenants / categories / workflows from SuprSend
+— it does **not** create them on startup. Point it at a workspace that hasn't been provisioned and every
+screen renders an **empty state** (no data — there is no mock fallback).
 
-> Without keys, the app currently falls back to mock data so screens still preview
-> (`lib/server/workspace.ts → hasWorkspaceKeys`). This mock fallback is slated for removal — see
-> `BACKEND_CHANGES.md` (§2): unconfigured should show empty states, not fake data.
+> One caveat during step 3: the backend Node SDK logs in with a **Workspace Key + Secret** pair, while the
+> Management API returns a single **API Key**. The script writes a best-guess mapping with a `VERIFY` note
+> inline in `.env.local` — if the app can't authenticate, confirm the mapping with the SuprSend team and
+> adjust those two lines. The public key and signing key are auto-filled correctly.
 
 ---
 
