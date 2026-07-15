@@ -119,7 +119,7 @@ through this app's own API routes (`app/api/**`), which run in `lib/server/**`. 
 (inbox, template editor) do talk to SuprSend directly, but only with a **short-lived JWT** this app mints
 for them — the secret never reaches the browser.
 
-There are **five** surfaces. The **Used in the app** column says which feature each one powers:
+There are **four** surfaces. The **Used in the app** column says which feature each one powers:
 
 | Surface | Host / package | Auth | Used in the app |
 |---|---|---|---|
@@ -127,7 +127,6 @@ There are **five** surfaces. The **Used in the app** column says which feature e
 | **Management API** | `https://management-api.suprsend.com` | Account-wide **`Authorization: ServiceToken <token>`** | The authoring screens: **Message Templates** (list/publish/delete) and **Preferences** (the admin's category defaults + channels). |
 | **Hub REST (signed)** | `https://hub.suprsend.com` | **HMAC-SHA256** signed per request | The preference screens the SDK can't reach: **Project Settings** (tenant defaults) and **My / User Settings** (one person's opt-ins). |
 | **React SDK** | `@suprsend/react`, `@suprsend/react-editor` | Short-lived **ES256 JWT** minted by this app | Two browser widgets: the **inbox bell** (`<Inbox>`) and the **embedded template editor** (`<TemplateEditor>` inside the Message Templates screen). |
-| **OpenAI** | `openai` (`gpt-4o`) | `OPENAI_API_KEY` | The **Generate** button on Message Templates — drafts template copy. *Not SuprSend.* |
 
 #### Endpoints, by surface
 
@@ -256,11 +255,10 @@ Open to the project's members (and Admin). What you can *do* depends on your rol
 ### Administer → Message Templates — `/admin/templates`
 
 - **What it does:** the content of each notification, per channel (email subject/body, inbox title/body…).
-  Create, edit, publish, delete. “Generate” drafts content with AI.
+  List, edit (in the embedded editor), delete.
 - **Embedded editor** at `/admin/templates/[slug]` is SuprSend's own visual editor running in the browser.
 - **Calls:**
-  - List / publish / delete → `/api/templates` → **Management API**
-  - AI draft → `/api/templates` (`mode: generate|edit`) → **OpenAI**
+  - List / delete → `/api/templates` → **Management API**
   - Editor → browser **React SDK** `<TemplateEditor>`; JWT from `/api/editor-token` (ES256, signing-key)
 
 ### Administer → Brand — `/admin/brand`
@@ -292,7 +290,6 @@ app/workspace resource pool
 app/api       route handlers — where every secret-bearing SuprSend call is made
 lib/server    server-only SuprSend access (Node SDK + Management API + signed Hub REST)
 lib           registries: workspaces (customers), tenants (projects), people, notifications
-lib/ai        OpenAI prompts + skills for template/workflow authoring
 components     UI, grouped by surface
 ```
 
