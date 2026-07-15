@@ -348,12 +348,13 @@ function clientFor(prefix) {
 //   POST /v1/{slug}/ws_signing_key/    → { id, private_key_base64 }     → *_SIGNING_KEY_ID / _B64
 //
 // The backend Node SDK (latest, v1.15.x) authenticates with the WORKSPACE KEY +
-// WORKSPACE SECRET. Confirmed from the dashboard: the KEY is the workspace uid
-// (create/list-workspace returns it), so it's auto-filled. The SECRET is a separate
-// HMAC secret shown only (masked) in the dashboard (Developers → API Keys → "Workspace
-// Key and Secret") — no API returns it, so it's the ONE value pasted by hand. (The REST
-// "API Key" from ws_api_key is a different, bearer credential and 401s on the SDK.)
-// Public + signing keys are auto-created and filled.
+// WORKSPACE SECRET (server-side-SDK credentials in the dashboard: Developers → API Keys
+// → "Workspace Key and Secret"). Neither is a documented field of any Management API —
+// list/create-workspace returns uid/slug but no workspace_key/secret — so both are left
+// as placeholders to copy from that dashboard section. (Observed but UNDOCUMENTED: on
+// one workspace the dashboard Workspace Key equalled the uid; not relied on until
+// confirmed by a successful SDK auth. The REST "API Key" from ws_api_key is a different,
+// bearer credential and 401s on the SDK.) Public + signing keys ARE auto-created.
 async function createWorkspaces() {
   const token = process.env.SUPRSEND_SERVICE_TOKEN;
   if (!token) {
@@ -445,21 +446,22 @@ async function createWorkspaces() {
       } else console.log(`  ✗ signing key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
     }
 
-    // 4) Backend Node SDK auth. The WORKSPACE KEY is the workspace uid — auto-fill it.
-    //    The WORKSPACE SECRET is the HMAC secret shown only (masked) in the dashboard;
-    //    no API returns it, so it's the one value to paste. (The SDK signs with the
-    //    secret and sends Authorization: <uid>:<signature>; the REST "API Key" is a
-    //    different, bearer credential that 401s on the SDK.)
-    if (!have.has(`${p}_WORKSPACE_KEY`)) out.push(`${p}_WORKSPACE_KEY=${record.uid}`);
-    if (have.has(`${p}_WORKSPACE_SECRET`)) {
-      console.log(`  • workspace secret already set — skipped`);
+    // 4) Backend Node SDK auth (WORKSPACE KEY + WORKSPACE SECRET). Neither is returned
+    //    by any Management API (see the header note), so copy BOTH from the dashboard:
+    //    "${name}" → Developers → API Keys → "Workspace Key and Secret". The workspace
+    //    uid (below, for reference) MAY equal the Workspace Key, but that's unconfirmed —
+    //    copy the value the dashboard labels "Workspace Key" to be safe.
+    if (have.has(`${p}_WORKSPACE_KEY`) && have.has(`${p}_WORKSPACE_SECRET`)) {
+      console.log(`  • workspace key/secret already set — skipped`);
     } else {
       out.push(
-        `# Paste ${name}'s Workspace Secret — the only value no API returns. In SuprSend:`,
-        `# "${name}" → Developers → API Keys → "Workspace Key and Secret" → copy the Secret.`,
+        `# Copy ${name}'s Workspace Key + Secret from the dashboard — neither is returned`,
+        `# by any Management API. SuprSend → "${name}" → Developers → API Keys →`,
+        `# "Workspace Key and Secret". (For reference, this workspace's uid is ${record.uid}.)`,
+        `${p}_WORKSPACE_KEY=`,
         `${p}_WORKSPACE_SECRET=`,
       );
-      console.log(`  ✓ workspace key = uid ${record.uid}  ·  → paste workspace secret from dashboard`);
+      console.log(`  → workspace key + secret: copy both from dashboard (placeholders written)`);
     }
   }
 
