@@ -2,10 +2,11 @@
 // Run: node --env-file=.env.local scripts/provision.mjs [stage]
 // Stages: tenants | users | objects | categories | templates | workflows | all (default: all)
 //
-// DevEx bootstrap: `workspaces` (standalone) creates the workspaces themselves from
-// an account service token and scaffolds .env.local — run it FIRST, paste the keys it
-// can't auto-fill, then run `all`. It is NOT part of `all` (the stages below need the
-// per-workspace key/secret). See createWorkspaces() below.
+// DevEx bootstrap: `workspaces` (standalone) creates the workspaces AND their auth
+// keys (public/signing/api) from an account service token and writes them into
+// .env.local — run it FIRST, then run `all`. It is NOT part of `all` (the stages
+// below read the per-workspace key/secret it writes). One key→env mapping is still
+// unconfirmed with SuprSend; see createWorkspaces() below.
 //
 // ⚠️ NOT a safe blind re-run for the `templates`/`workflows` stages:
 //   • templates: re-pushes the raw-HTML templates here → OVERWRITES any Visual
@@ -333,20 +334,27 @@ function clientFor(prefix) {
   return base_url ? new Suprsend(key, secret, { base_url }) : new Suprsend(key, secret);
 }
 
-// ── Workspace creation (DevEx) ────────────────────────────────────────────────
-// `node scripts/provision.mjs workspaces` — create each customer workspace from an
-// ACCOUNT service token, then scaffold the local env so a dev supplies only the
-// token and pastes the rest once.
+// ── Workspace bootstrap (DevEx) ───────────────────────────────────────────────
+// `node scripts/provision.mjs workspaces` — from an ACCOUNT service token alone,
+// create each customer workspace AND its auth keys via the Management API, writing
+// them straight into .env.local (idempotent: only fills vars that are missing, never
+// clobbers, and skips creating a credential you already have — key material is shown
+// only once). All calls are ServiceToken-authed and use the workspace SLUG (returned
+// by Create Workspace) as the path param.
 //
-// Per the Create Workspace API (https://docs.suprsend.com/reference/create-workspace)
-// the response is workspace METADATA only (uid, slug, mode) — it does NOT return the
-// workspace key/secret, public key, or signing key. Those are generated in the
-// dashboard (Developers → API Keys) and can't be fetched programmatically, so this
-// step records what the API gives us and writes empty, clearly-labelled placeholders
-// for the rest (never overwriting a value already in .env.local).
+// Endpoints (all under https://management-api.suprsend.com):
+//   POST /v1/workspace/                → { uid, slug, mode }            (metadata only)
+//   POST /v1/{slug}/ws_public_key/     → { api_key }                    → NEXT_PUBLIC_*_PUBLIC_KEY
+//   POST /v1/{slug}/ws_signing_key/    → { id, private_key_base64 }     → *_SIGNING_KEY_ID / _B64
+//   POST /v1/{slug}/ws_api_key/        → { id, api_key }                → *_WORKSPACE_KEY / _SECRET
 //
-// Two-phase by necessity: (1) run `workspaces` to create + scaffold, (2) paste the
-// keys into .env.local, then run the normal stages to provision.
+// ⚠️ ONE UNCONFIRMED MAPPING — the backend Node SDK is `new Suprsend(workspace_env,
+// workspace_secret)` (TWO values). SuprSend docs describe the "Workspace Key +
+// Workspace Secret" pair as a DIFFERENT credential from the single REST "API Key" that
+// ws_api_key returns. Until the SuprSend team confirms whether the SDK accepts that
+// single api_key (or there's an endpoint for the pair), we write a best-guess mapping
+// (WORKSPACE_KEY=id, WORKSPACE_SECRET=api_key) with the raw values in a comment so it's
+// trivial to correct. Public key + signing key mappings ARE confirmed.
 async function createWorkspaces() {
   const token = process.env.SUPRSEND_SERVICE_TOKEN;
   if (!token) {
@@ -355,93 +363,103 @@ async function createWorkspaces() {
   }
   const mgmt = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
   const hdr = { Authorization: `ServiceToken ${token}`, "Content-Type": "application/json" };
+  const api = async (method, path, body) => {
+    try {
+      const res = await fetch(`${mgmt}${path}`, { method, headers: hdr, body: body ? JSON.stringify(body) : undefined });
+      return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+    } catch (e) {
+      return { ok: false, status: 0, data: { detail: e?.message ?? String(e) } };
+    }
+  };
+  const findByName = (data, name) =>
+    (Array.isArray(data?.results) ? data.results : []).find((w) => (w?.name || "").toLowerCase() === name.toLowerCase()) || null;
 
-  // Read existing .env.local so we only ADD missing vars (never clobber a paste).
+  // Read existing .env.local — only ADD vars that are missing (idempotent; never
+  // clobber, and never re-create a credential we already hold).
   const envPath = new URL("../.env.local", import.meta.url);
   const existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
-  const existingKeys = new Set(
-    existing.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
-      .map((l) => (l.includes("=") ? l.slice(0, l.indexOf("=")).trim() : "")).filter(Boolean),
+  const have = new Set(
+    existing.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#") && l.includes("="))
+      .map((l) => l.slice(0, l.indexOf("=")).trim()).filter(Boolean),
   );
-  const blocks = [];
+  const out = []; // lines to append to .env.local
 
   for (const ws of WORKSPACES) {
     const name = ws.defaultBrand?.name || ws.slug;
-    console.log(`\n=== create workspace: ${name} (${ws.slug}) ===`);
-    let created = null;
-    try {
-      const res = await fetch(`${mgmt}/v1/workspace/`, {
-        method: "POST",
-        headers: hdr,
-        body: JSON.stringify({ name, description: `Keystone reference app — ${ws.slug} workspace` }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        console.log(`  ✗ create failed (HTTP ${res.status}) ${JSON.stringify(data).slice(0, 300)}`);
-      } else {
-        // The response is a (paginated) list of workspaces — match the one we just
-        // created by name to read back its uid/slug/mode.
-        const results = Array.isArray(data?.results) ? data.results : [];
-        created = results.find((w) => (w?.name || "").toLowerCase() === name.toLowerCase()) || null;
-        if (created) {
-          console.log(`  ✓ workspace uid=${created.uid} slug=${created.slug} mode=${created.mode}`);
-        } else {
-          console.log(`  ✓ request OK (HTTP ${res.status}) but "${name}" wasn't in the returned page — check the dashboard for its uid/slug.`);
-        }
-      }
-    } catch (e) {
-      console.log(`  ✗ create error: ${e?.message ?? e}`);
-    }
-
-    // Scaffold this workspace's env vars. The API returns none of these, so they're
-    // written empty for the dev to paste from Dashboard → Developers → API Keys.
     const p = ws.prefix; // e.g. SUPRSEND_ACME
     const pub = `NEXT_PUBLIC_SUPRSEND_${ws.slug.replace(/-/g, "_").toUpperCase()}`;
-    const meta = created ? `uid=${created.uid} slug=${created.slug} mode=${created.mode}` : "created (see dashboard)";
-    blocks.push({
-      header:
-        `# ── ${name} workspace — ${meta} ──\n` +
-        `# Required: paste WORKSPACE_KEY, WORKSPACE_SECRET (shown once), and PUBLIC_KEY.\n` +
-        `# Optional: SIGNING_KEY_* (in-app template editor JWT), SLACK_WEBHOOK (Slack delivery).`,
-      vars: [
-        `${p}_WORKSPACE_KEY`,
-        `${p}_WORKSPACE_SECRET`,
-        `${pub}_PUBLIC_KEY`,
-        `${p}_SIGNING_KEY_ID`,
-        `${p}_SIGNING_KEY_B64`,
-        `${p}_SLACK_WEBHOOK`,
-      ],
-    });
+    console.log(`\n=== ${name} (${ws.slug}) ===`);
+
+    // 1) Get-or-create the workspace → its SuprSend slug (the Management API path arg).
+    //    List first so a re-run reuses the existing workspace instead of duplicating.
+    let record = findByName(await api("GET", "/v1/workspace/"), name);
+    if (!record) {
+      const created = await api("POST", "/v1/workspace/", { name, description: `Keystone reference app — ${ws.slug} workspace` });
+      if (!created.ok) { console.log(`  ✗ create workspace (HTTP ${created.status}) ${JSON.stringify(created.data).slice(0, 200)}`); continue; }
+      record = findByName(created.data, name);
+    }
+    if (!record?.slug) { console.log(`  ✗ couldn't resolve the workspace slug — skipping keys.`); continue; }
+    const slug = record.slug;
+    console.log(`  ✓ workspace uid=${record.uid} slug=${slug} mode=${record.mode}`);
+    out.push(`\n# ── ${name} — uid=${record.uid} slug=${slug} mode=${record.mode} ──`);
+
+    // 2) Public key (browser inbox) → NEXT_PUBLIC_*_PUBLIC_KEY. Confirmed mapping.
+    if (have.has(`${pub}_PUBLIC_KEY`)) {
+      console.log(`  • public key already set — skipped`);
+    } else {
+      const r = await api("POST", `/v1/${slug}/ws_public_key/`, { name: "keystone-web", description: "Keystone browser inbox" });
+      if (r.ok && r.data?.api_key) { out.push(`${pub}_PUBLIC_KEY=${r.data.api_key}`); console.log(`  ✓ public key created`); }
+      else console.log(`  ✗ public key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
+    }
+
+    // 3) Signing key (in-app template editor JWT) → *_SIGNING_KEY_ID / _B64. Confirmed.
+    if (have.has(`${p}_SIGNING_KEY_ID`) && have.has(`${p}_SIGNING_KEY_B64`)) {
+      console.log(`  • signing key already set — skipped`);
+    } else {
+      const r = await api("POST", `/v1/${slug}/ws_signing_key/`, {});
+      if (r.ok && r.data?.id && r.data?.private_key_base64) {
+        out.push(`${p}_SIGNING_KEY_ID=${r.data.id}`, `${p}_SIGNING_KEY_B64=${r.data.private_key_base64}`);
+        console.log(`  ✓ signing key created`);
+      } else console.log(`  ✗ signing key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
+    }
+
+    // 4) Backend Node SDK auth (*_WORKSPACE_KEY / _SECRET). The SDK needs TWO values;
+    //    ws_api_key returns a single api_key (+ id). MAPPING UNCONFIRMED — see the
+    //    header note. Best guess written active, raw values kept in a comment.
+    if (have.has(`${p}_WORKSPACE_SECRET`)) {
+      console.log(`  • workspace key/secret already set — skipped`);
+    } else {
+      const r = await api("POST", `/v1/${slug}/ws_api_key/`, { name: "keystone-backend", description: "Keystone Node SDK" });
+      if (r.ok && r.data?.api_key) {
+        out.push(
+          `# VERIFY mapping with SuprSend — backend is new Suprsend(workspace_env, workspace_secret).`,
+          `# ws_api_key returned: id=${r.data.id}  api_key=${r.data.api_key}`,
+          `# Best guess below; if the app fails to authenticate, swap to the dashboard`,
+          `# "Workspace Key" + "Workspace Secret" pair (Developers → API Keys).`,
+          `${p}_WORKSPACE_KEY=${r.data.id ?? ""}`,
+          `${p}_WORKSPACE_SECRET=${r.data.api_key}`,
+        );
+        console.log(`  ✓ api key created (⚠ WORKSPACE_KEY/SECRET mapping unconfirmed — see .env.local)`);
+      } else console.log(`  ✗ api key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
+    }
   }
 
-  // Merge into .env.local WITHOUT overwriting anything already set.
-  const append = [];
-  for (const b of blocks) {
-    const missing = b.vars.filter((k) => !existingKeys.has(k));
-    if (missing.length === 0) continue;
-    append.push("", b.header, ...missing.map((k) => `${k}=`));
-  }
-  if (!existingKeys.has("SUPRSEND_SERVICE_TOKEN")) {
-    append.unshift("", "# Account-level service token (management API):", "SUPRSEND_SERVICE_TOKEN=");
-  }
+  // Ensure the service token itself is persisted for the later provisioning run.
+  if (!have.has("SUPRSEND_SERVICE_TOKEN")) out.unshift("", "# Account-level service token (management API):", `SUPRSEND_SERVICE_TOKEN=${token}`);
 
-  if (append.length) {
+  if (out.length) {
     const sep = existing && !existing.endsWith("\n") ? "\n" : "";
-    writeFileSync(envPath, existing + sep + append.join("\n") + "\n");
-    const added = append.filter((l) => l.endsWith("=")).length;
-    console.log(`\n✓ Wrote env scaffolding to .env.local (${added} new var(s); existing values untouched).`);
+    writeFileSync(envPath, existing + sep + out.join("\n") + "\n");
+    console.log(`\n✓ Updated .env.local (existing values untouched).`);
   } else {
-    console.log("\n✓ .env.local already has every workspace var — nothing to scaffold.");
+    console.log(`\n✓ .env.local already has every credential — nothing to do.`);
   }
 
   console.log(
     "\nNext steps:\n" +
-    "  1. Dashboard → Developers → API Keys (per workspace): paste WORKSPACE_KEY,\n" +
-    "     WORKSPACE_SECRET, and PUBLIC_KEY into .env.local.\n" +
-    "  2. Provision the workspaces:  node --env-file=.env.local scripts/provision.mjs\n" +
-    "\nWhy the paste step: the Create Workspace API returns only workspace metadata\n" +
-    "(uid/slug/mode); keys/secrets are dashboard-generated and aren't returned by any\n" +
-    "API, so they can't be auto-filled.",
+    "  1. Confirm the WORKSPACE_KEY/SECRET mapping note in .env.local with the SuprSend team.\n" +
+    "  2. Provision resources:  node --env-file=.env.local scripts/provision.mjs\n" +
+    "  3. Run the app:          npm run dev",
   );
 }
 
