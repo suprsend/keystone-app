@@ -56,10 +56,6 @@ export function getProjectManager(tenant: TenantId): Person | undefined {
   return getRoster(tenant).find((p) => p.role === "Project Manager");
 }
 
-export function getPerson(tenant: TenantId, id: string): Person | undefined {
-  return getRoster(tenant).find((p) => p.id === id);
-}
-
 const PALETTE = ["#0072CE", "#C8102E", "#7C3AED", "#ED7902", "#0A8080", "#B45309"];
 
 /** Stable avatar colour for a person id. */
