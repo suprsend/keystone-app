@@ -371,8 +371,16 @@ async function createWorkspaces() {
       return { ok: false, status: 0, data: { detail: e?.message ?? String(e) } };
     }
   };
-  const findByName = (data, name) =>
-    (Array.isArray(data?.results) ? data.results : []).find((w) => (w?.name || "").toLowerCase() === name.toLowerCase()) || null;
+  // Pull the workspace we care about out of a Management API response, tolerating
+  // BOTH shapes: a list ({ results: [...] }) or a single workspace object.
+  const pickWs = (data, name) => {
+    if (!data || typeof data !== "object") return null;
+    if (Array.isArray(data.results)) {
+      return data.results.find((w) => (w?.name || "").toLowerCase() === name.toLowerCase())
+        || (data.results.length === 1 ? data.results[0] : null);
+    }
+    return data.slug || data.uid ? data : null;
+  };
 
   // Read existing .env.local — only ADD vars that are missing (idempotent; never
   // clobber, and never re-create a credential we already hold).
@@ -391,16 +399,31 @@ async function createWorkspaces() {
     console.log(`\n=== ${name} (${ws.slug}) ===`);
 
     // 1) Get-or-create the workspace → its SuprSend slug (the Management API path arg).
-    //    List first so a re-run reuses the existing workspace instead of duplicating.
-    let record = findByName(await api("GET", "/v1/workspace/"), name);
+    //    List first (reuse an existing one); create only if absent. Tolerant of both
+    //    response shapes, and logs the raw response if it still can't resolve.
+    const listed = await api("GET", "/v1/workspace/");
+    let record = pickWs(listed.data, name);
+    let how = `existing (GET ${listed.status})`;
     if (!record) {
       const created = await api("POST", "/v1/workspace/", { name, description: `Keystone reference app — ${ws.slug} workspace` });
-      if (!created.ok) { console.log(`  ✗ create workspace (HTTP ${created.status}) ${JSON.stringify(created.data).slice(0, 200)}`); continue; }
-      record = findByName(created.data, name);
+      record = pickWs(created.data, name);
+      how = `created (POST ${created.status})`;
+      if (!record) {
+        // May have been created but returned in a shape we didn't match — re-list.
+        const relisted = await api("GET", "/v1/workspace/");
+        record = pickWs(relisted.data, name);
+        how = `re-listed (GET ${relisted.status})`;
+        if (!record) {
+          console.log(`  ✗ couldn't resolve workspace (GET ${listed.status}, POST ${created.status}, re-GET ${relisted.status}).`);
+          console.log(`    GET  response: ${JSON.stringify(listed.data).slice(0, 300)}`);
+          console.log(`    POST response: ${JSON.stringify(created.data).slice(0, 300)}`);
+          continue;
+        }
+      }
     }
-    if (!record?.slug) { console.log(`  ✗ couldn't resolve the workspace slug — skipping keys.`); continue; }
+    if (!record.slug) { console.log(`  ✗ workspace resolved but has no slug: ${JSON.stringify(record).slice(0, 300)}`); continue; }
     const slug = record.slug;
-    console.log(`  ✓ workspace uid=${record.uid} slug=${slug} mode=${record.mode}`);
+    console.log(`  ✓ workspace ${how} — uid=${record.uid} slug=${slug} mode=${record.mode}`);
     out.push(`\n# ── ${name} — uid=${record.uid} slug=${slug} mode=${record.mode} ──`);
 
     // 2) Public key (browser inbox) → NEXT_PUBLIC_*_PUBLIC_KEY. Confirmed mapping.
