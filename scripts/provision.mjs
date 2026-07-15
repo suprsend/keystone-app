@@ -346,15 +346,13 @@ function clientFor(prefix) {
 //   POST /v1/workspace/                → { uid, slug, mode }            (metadata only)
 //   POST /v1/{slug}/ws_public_key/     → { api_key }                    → NEXT_PUBLIC_*_PUBLIC_KEY
 //   POST /v1/{slug}/ws_signing_key/    → { id, private_key_base64 }     → *_SIGNING_KEY_ID / _B64
-//   POST /v1/{slug}/ws_api_key/        → { id, api_key }                → *_WORKSPACE_KEY / _SECRET
 //
-// ⚠️ ONE UNCONFIRMED MAPPING — the backend Node SDK is `new Suprsend(workspace_env,
-// workspace_secret)` (TWO values). SuprSend docs describe the "Workspace Key +
-// Workspace Secret" pair as a DIFFERENT credential from the single REST "API Key" that
-// ws_api_key returns. Until the SuprSend team confirms whether the SDK accepts that
-// single api_key (or there's an endpoint for the pair), we write a best-guess mapping
-// (WORKSPACE_KEY=id, WORKSPACE_SECRET=api_key) with the raw values in a comment so it's
-// trivial to correct. Public key + signing key mappings ARE confirmed.
+// The backend Node SDK (latest, v1.15.x) authenticates with the WORKSPACE KEY +
+// WORKSPACE SECRET — a pair DISTINCT from the REST "API Key" the ws_api_key endpoint
+// returns (feeding that key to the SDK is rejected with 401). No Management API returns
+// this pair; it lives in the dashboard (Developers → API Keys). So those two vars are
+// left as labelled placeholders to paste once — the only hand-copied step. The public
+// key and signing key are created and filled automatically.
 async function createWorkspaces() {
   const token = process.env.SUPRSEND_SERVICE_TOKEN;
   if (!token) {
@@ -446,24 +444,24 @@ async function createWorkspaces() {
       } else console.log(`  ✗ signing key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
     }
 
-    // 4) Backend Node SDK auth (*_WORKSPACE_KEY / _SECRET). The SDK needs TWO values;
-    //    ws_api_key returns a single api_key (+ id). MAPPING UNCONFIRMED — see the
-    //    header note. Best guess written active, raw values kept in a comment.
-    if (have.has(`${p}_WORKSPACE_SECRET`)) {
+    // 4) Backend Node SDK auth (*_WORKSPACE_KEY / _SECRET). CONFIRMED against the
+    //    latest SDK (v1.15.x): it authenticates with new Suprsend(workspace_key,
+    //    workspace_secret) — a pair DISTINCT from the REST "API Key", sourced from the
+    //    dashboard (Developers → API Keys). No Management API endpoint returns this
+    //    pair (ws_api_key returns the REST key, which the SDK rejects with 401), so we
+    //    leave labelled placeholders for the dev to paste once. Everything above is
+    //    auto-filled; this is the only hand-copied step.
+    if (have.has(`${p}_WORKSPACE_KEY`) && have.has(`${p}_WORKSPACE_SECRET`)) {
       console.log(`  • workspace key/secret already set — skipped`);
     } else {
-      const r = await api("POST", `/v1/${slug}/ws_api_key/`, { name: "keystone-backend", description: "Keystone Node SDK" });
-      if (r.ok && r.data?.api_key) {
-        out.push(
-          `# VERIFY mapping with SuprSend — backend is new Suprsend(workspace_env, workspace_secret).`,
-          `# ws_api_key returned: id=${r.data.id}  api_key=${r.data.api_key}`,
-          `# Best guess below; if the app fails to authenticate, swap to the dashboard`,
-          `# "Workspace Key" + "Workspace Secret" pair (Developers → API Keys).`,
-          `${p}_WORKSPACE_KEY=${r.data.id ?? ""}`,
-          `${p}_WORKSPACE_SECRET=${r.data.api_key}`,
-        );
-        console.log(`  ✓ api key created (⚠ WORKSPACE_KEY/SECRET mapping unconfirmed — see .env.local)`);
-      } else console.log(`  ✗ api key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
+      out.push(
+        `# Paste ${name}'s Workspace Key + Secret from the dashboard (the backend Node SDK`,
+        `# uses this pair; it is NOT returned by any create API). In SuprSend: switch to`,
+        `# "${name}" → Developers → API Keys — both are shown at the top of the page.`,
+        `${p}_WORKSPACE_KEY=`,
+        `${p}_WORKSPACE_SECRET=`,
+      );
+      console.log(`  → workspace key/secret: paste from dashboard (placeholder written to .env.local)`);
     }
   }
 
