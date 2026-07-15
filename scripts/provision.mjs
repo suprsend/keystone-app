@@ -342,19 +342,18 @@ function clientFor(prefix) {
 // only once). All calls are ServiceToken-authed and use the workspace SLUG (returned
 // by Create Workspace) as the path param.
 //
-// Endpoints (all under https://management-api.suprsend.com):
-//   POST /v1/workspace/                → { uid, slug, mode }            (metadata only)
-//   POST /v1/{slug}/ws_public_key/     → { api_key }                    → NEXT_PUBLIC_*_PUBLIC_KEY
-//   POST /v1/{slug}/ws_signing_key/    → { id, private_key_base64 }     → *_SIGNING_KEY_ID / _B64
+// What gets set per workspace (endpoints under https://management-api.suprsend.com):
+//   POST /v1/workspace/             → { uid, slug, mode }
+//        WORKSPACE_KEY = uid   (dashboard "Workspace Key" == the uid — confirmed) ✓ auto
+//   POST /v1/{slug}/ws_public_key/  → { api_key }         → NEXT_PUBLIC_*_PUBLIC_KEY ✓ auto
+//   POST /v1/{slug}/ws_signing_key/ → { uid, private_key_base64 }
+//        SIGNING_KEY_ID = uid  (the editor JWT `kid` is the signing-key UID, NOT its
+//        `id` — verified: id → 401 "invalid kid", uid → 200), SIGNING_KEY_B64 ✓ auto
 //
-// The backend Node SDK (latest, v1.15.x) authenticates with the WORKSPACE KEY +
-// WORKSPACE SECRET (server-side-SDK credentials in the dashboard: Developers → API Keys
-// → "Workspace Key and Secret"). Neither is a documented field of any Management API —
-// list/create-workspace returns uid/slug but no workspace_key/secret — so both are left
-// as placeholders to copy from that dashboard section. (Observed but UNDOCUMENTED: on
-// one workspace the dashboard Workspace Key equalled the uid; not relied on until
-// confirmed by a successful SDK auth. The REST "API Key" from ws_api_key is a different,
-// bearer credential and 401s on the SDK.) Public + signing keys ARE auto-created.
+// The ONLY value with no API is WORKSPACE_SECRET (the backend Node SDK's HMAC secret) —
+// SuprSend confirmed it isn't exposed anywhere but the dashboard. So it's the single
+// hand-pasted value: Developers → API Keys → "Workspace Key and Secret" → the Secret.
+// (The REST "API Key" from ws_api_key is a different bearer credential and 401s on the SDK.)
 async function createWorkspaces() {
   const token = process.env.SUPRSEND_SERVICE_TOKEN;
   if (!token) {
@@ -449,22 +448,20 @@ async function createWorkspaces() {
       } else console.log(`  ✗ signing key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
     }
 
-    // 4) Backend Node SDK auth (WORKSPACE KEY + WORKSPACE SECRET). Neither is returned
-    //    by any Management API (see the header note), so copy BOTH from the dashboard:
-    //    "${name}" → Developers → API Keys → "Workspace Key and Secret". The workspace
-    //    uid (below, for reference) MAY equal the Workspace Key, but that's unconfirmed —
-    //    copy the value the dashboard labels "Workspace Key" to be safe.
-    if (have.has(`${p}_WORKSPACE_KEY`) && have.has(`${p}_WORKSPACE_SECRET`)) {
-      console.log(`  • workspace key/secret already set — skipped`);
+    // 4) Backend Node SDK auth (WORKSPACE KEY + WORKSPACE SECRET). The KEY is the
+    //    workspace uid (dashboard "Workspace Key" == the uid — confirmed on-screen), so
+    //    auto-fill it. The SECRET is dashboard-only — no Management API returns it
+    //    (confirmed by SuprSend) — so it's the ONE value pasted by hand.
+    if (!have.has(`${p}_WORKSPACE_KEY`)) out.push(`${p}_WORKSPACE_KEY=${record.uid}`);
+    if (have.has(`${p}_WORKSPACE_SECRET`)) {
+      console.log(`  • workspace secret already set — skipped`);
     } else {
       out.push(
-        `# Copy ${name}'s Workspace Key + Secret from the dashboard — neither is returned`,
-        `# by any Management API. SuprSend → "${name}" → Developers → API Keys →`,
-        `# "Workspace Key and Secret". (For reference, this workspace's uid is ${record.uid}.)`,
-        `${p}_WORKSPACE_KEY=`,
+        `# Paste ${name}'s Workspace Secret — the only value no API returns. SuprSend →`,
+        `# "${name}" → Developers → API Keys → "Workspace Key and Secret" → copy the Secret.`,
         `${p}_WORKSPACE_SECRET=`,
       );
-      console.log(`  → workspace key + secret: copy both from dashboard (placeholders written)`);
+      console.log(`  ✓ workspace key = uid ${record.uid}  ·  → paste workspace secret from dashboard`);
     }
   }
 

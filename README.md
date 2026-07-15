@@ -32,18 +32,16 @@ cp .env.example .env.local
 #    Open .env.local and paste your token into SUPRSEND_SERVICE_TOKEN.
 #    (SuprSend dashboard → Account Settings → Service Tokens)
 
-# 3 — Create the workspaces + their auto-creatable keys
+# 3 — Create the workspaces + auto-fill their keys
 node --env-file=.env.local scripts/provision.mjs workspaces
-#    Creates each workspace and auto-fills its PUBLIC KEY + SIGNING KEY into .env.local.
-#    It leaves WORKSPACE_KEY / WORKSPACE_SECRET blank — those come from the dashboard (step 4).
+#    Creates each workspace and auto-fills WORKSPACE_KEY, PUBLIC_KEY, and SIGNING_KEY
+#    into .env.local. It leaves WORKSPACE_SECRET blank — the one value below.
 
-# 4 — Paste each workspace's Workspace Key + Secret (one-time, from the dashboard)
+# 4 — Paste each workspace's Workspace Secret (the one value no API returns)
 #    In SuprSend, for EACH workspace (Acme, then Globex):
 #      • switch to that workspace (top-right switcher)
-#      • Developers → API Keys → "Workspace Key and Secret" section (top of the page)
-#      • copy the Workspace Key and the Workspace Secret
-#    Paste them into the matching lines in .env.local, e.g. for Acme:
-#      SUPRSEND_ACME_WORKSPACE_KEY=...
+#      • Developers → API Keys → "Workspace Key and Secret" section
+#      • copy the Workspace SECRET, and paste it into the matching line in .env.local:
 #      SUPRSEND_ACME_WORKSPACE_SECRET=...
 
 # 5 — Provision each workspace: tenants, users, objects, categories, templates, workflows
@@ -54,15 +52,16 @@ npm run dev                    # http://localhost:3000
 ```
 
 **Steps 3–5 are required.** Step 3 creates each workspace from your account token and auto-fills its
-**public key** + **signing key**. Step 4 is the one manual step (see below). Step 5 then populates each
-workspace, because the app *reads* its tenants / categories / workflows from SuprSend — it does **not**
-create them on startup. Point it at a workspace that hasn't been provisioned and every screen renders an
-**empty state** (no data — there is no mock fallback).
+**workspace key** (= the workspace uid), **public key**, and **signing key**. Step 4 pastes the one value
+no API provides (the Workspace Secret). Step 5 then populates each workspace, because the app *reads* its
+tenants / categories / workflows from SuprSend — it does **not** create them on startup. Point it at a
+workspace that hasn't been provisioned and every screen renders an **empty state** (no mock fallback).
 
-> **Why step 4 is manual:** the backend Node SDK authenticates with a **Workspace Key + Secret** pair
-> (HMAC signing) — a different credential from the REST "API Key", shown only in the dashboard. No
-> Management API returns it, so it's the single value copied by hand per workspace. The public key and
-> signing key are created automatically in step 3.
+> **Why only the Secret is manual:** the backend Node SDK authenticates with a **Workspace Key + Secret**
+> pair (HMAC). The Key is the workspace `uid` (which the API returns, so it's auto-filled); the **Secret**
+> is shown only in the dashboard — no Management API returns it — so it's the single hand-pasted value.
+> Note: the signing-key env `SIGNING_KEY_ID` holds the signing key's **UID** (`signing_key_…`), not its
+> `id` (`ws_signk_…`) — that's the value the embedded editor's JWT `kid` requires.
 
 ---
 
