@@ -335,25 +335,14 @@ function clientFor(prefix) {
 }
 
 // ── Workspace bootstrap (DevEx) ───────────────────────────────────────────────
-// `node scripts/provision.mjs workspaces` — from an ACCOUNT service token alone,
-// create each customer workspace AND its auth keys via the Management API, writing
-// them straight into .env.local (idempotent: only fills vars that are missing, never
-// clobbers, and skips creating a credential you already have — key material is shown
-// only once). All calls are ServiceToken-authed and use the workspace SLUG (returned
-// by Create Workspace) as the path param.
-//
-// What gets set per workspace (endpoints under https://management-api.suprsend.com):
-//   POST /v1/workspace/             → { uid, slug, mode }
-//        WORKSPACE_KEY = uid   (dashboard "Workspace Key" == the uid — confirmed) ✓ auto
-//   POST /v1/{slug}/ws_public_key/  → { api_key }         → NEXT_PUBLIC_*_PUBLIC_KEY ✓ auto
-//   POST /v1/{slug}/ws_signing_key/ → { uid, private_key_base64 }
-//        SIGNING_KEY_ID = uid  (the editor JWT `kid` is the signing-key UID, NOT its
-//        `id` — verified: id → 401 "invalid kid", uid → 200), SIGNING_KEY_B64 ✓ auto
-//
-// The ONLY value with no API is WORKSPACE_SECRET (the backend Node SDK's HMAC secret) —
-// SuprSend confirmed it isn't exposed anywhere but the dashboard. So it's the single
-// hand-pasted value: Developers → API Keys → "Workspace Key and Secret" → the Secret.
-// (The REST "API Key" from ws_api_key is a different bearer credential and 401s on the SDK.)
+// `node scripts/provision.mjs workspaces` — from an ACCOUNT service token, create each
+// customer workspace (POST /v1/workspace/, ServiceToken auth) and then scaffold ALL of
+// its credentials as labelled placeholders in .env.local for YOU to paste from the
+// dashboard (Developers → API Keys). We intentionally do NOT auto-create the keys: the
+// Management API's create endpoints return values that don't map 1:1 to what the app
+// needs (e.g. the REST "API Key" ≠ the SDK's Workspace Key+Secret; the signing-key
+// `id` ≠ the editor JWT `kid`, which must be the UID). Copying the exact dashboard
+// values removes every mapping pitfall. Idempotent: only missing vars are written.
 async function createWorkspaces() {
   const token = process.env.SUPRSEND_SERVICE_TOKEN;
   if (!token) {
@@ -425,43 +414,26 @@ async function createWorkspaces() {
     console.log(`  ✓ workspace ${how} — uid=${record.uid} slug=${slug} mode=${record.mode}`);
     out.push(`\n# ── ${name} — uid=${record.uid} slug=${slug} mode=${record.mode} ──`);
 
-    // 2) Public key (browser inbox) → NEXT_PUBLIC_*_PUBLIC_KEY. Confirmed mapping.
-    if (have.has(`${pub}_PUBLIC_KEY`)) {
-      console.log(`  • public key already set — skipped`);
+    // Scaffold every credential this workspace needs, for YOU to paste from the
+    // dashboard (Developers → API Keys). No API auto-creation — you copy the exact
+    // values, so nothing can be mis-mapped. Only missing vars are written (never
+    // clobbered). NOTE on the signing key: SIGNING_KEY_ID must be the "Signing Key UID"
+    // (signing_key_…), NOT the "Signing Key ID" (ws_signk_…) — that's the value the
+    // embedded editor's JWT `kid` requires (verified: uid → 200, id → 401).
+    const creds = [
+      [`${p}_WORKSPACE_KEY`, `# Workspace Key      — "Workspace Key and Secret" section`],
+      [`${p}_WORKSPACE_SECRET`, `# Workspace Secret   — same section (shown once)`],
+      [`${pub}_PUBLIC_KEY`, `# Public Key         — "Public Keys" section (the SS.PUBK… value)`],
+      [`${p}_SIGNING_KEY_ID`, `# Signing Key UID    — "Signing Keys" → the "signing_key_…" UID (NOT ws_signk_…)`],
+      [`${p}_SIGNING_KEY_B64`, `# Signing Key Base64 — "Signing Keys" → Generate → copy the Base64 (shown once)`],
+    ];
+    const missing = creds.filter(([k]) => !have.has(k));
+    if (missing.length === 0) {
+      console.log(`  • all credentials already set — skipped`);
     } else {
-      const r = await api("POST", `/v1/${slug}/ws_public_key/`, { name: "keystone-web", description: "Keystone browser inbox" });
-      if (r.ok && r.data?.api_key) { out.push(`${pub}_PUBLIC_KEY=${r.data.api_key}`); console.log(`  ✓ public key created`); }
-      else console.log(`  ✗ public key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
-    }
-
-    // 3) Signing key (in-app template editor JWT) → *_SIGNING_KEY_ID / _B64.
-    //    The editor JWT's `kid` must be the signing key's UID (`signing_key_…`), NOT
-    //    its `id` (`ws_signk_…`) — verified: management-api returns 401
-    //    "invalid JWT kid-header" for the id, and 200 for the uid.
-    if (have.has(`${p}_SIGNING_KEY_ID`) && have.has(`${p}_SIGNING_KEY_B64`)) {
-      console.log(`  • signing key already set — skipped`);
-    } else {
-      const r = await api("POST", `/v1/${slug}/ws_signing_key/`, {});
-      if (r.ok && r.data?.uid && r.data?.private_key_base64) {
-        out.push(`${p}_SIGNING_KEY_ID=${r.data.uid}`, `${p}_SIGNING_KEY_B64=${r.data.private_key_base64}`);
-        console.log(`  ✓ signing key created (kid = uid ${r.data.uid})`);
-      } else console.log(`  ✗ signing key (HTTP ${r.status}) ${JSON.stringify(r.data).slice(0, 160)}`);
-    }
-
-    // 4) Backend Node SDK auth (WORKSPACE KEY + WORKSPACE SECRET). The KEY is the
-    //    workspace uid (dashboard "Workspace Key" == the uid — confirmed on-screen), so
-    //    auto-fill it. The SECRET is dashboard-only — no Management API returns it
-    //    (confirmed by SuprSend) — so it's the ONE value pasted by hand.
-    if (!have.has(`${p}_WORKSPACE_KEY`)) out.push(`${p}_WORKSPACE_KEY=${record.uid}`);
-    if (have.has(`${p}_WORKSPACE_SECRET`)) {
-      console.log(`  • workspace secret already set — skipped`);
-    } else {
-      out.push(
-        `# Paste ${name}'s Workspace Secret — the only value no API returns. SuprSend →`,
-        `# "${name}" → Developers → API Keys → "Workspace Key and Secret" → copy the Secret.`,
-        `${p}_WORKSPACE_SECRET=`,
-      );
-      console.log(`  ✓ workspace key = uid ${record.uid}  ·  → paste workspace secret from dashboard`);
+      out.push(`# Paste these from SuprSend → "${name}" → Developers → API Keys:`);
+      for (const [k, note] of missing) out.push(note, `${k}=`);
+      console.log(`  → wrote ${missing.length} credential placeholder(s) — paste them from the dashboard`);
     }
   }
 
@@ -478,7 +450,9 @@ async function createWorkspaces() {
 
   console.log(
     "\nNext steps:\n" +
-    "  1. Confirm the WORKSPACE_KEY/SECRET mapping note in .env.local with the SuprSend team.\n" +
+    "  1. Open .env.local and paste each workspace's 5 credentials from the dashboard\n" +
+    "     (SuprSend → the workspace → Developers → API Keys). Each blank line has a\n" +
+    "     comment above it saying exactly which value to copy.\n" +
     "  2. Provision resources:  node --env-file=.env.local scripts/provision.mjs\n" +
     "  3. Run the app:          npm run dev",
   );
