@@ -15,7 +15,7 @@ import {
   PenSquare,
   Trash2,
 } from "lucide-react";
-import { TeamsIcon } from "@/components/icons/teams-icon";
+import { SlackIcon } from "@/components/icons/slack-icon";
 import {
   Tooltip,
   TooltipContent,
@@ -49,7 +49,7 @@ const CHANNEL_META: { key: string; label: string; icon: React.ComponentType<{ cl
   { key: "androidpush", label: "Android Push", icon: Smartphone },
   { key: "iospush", label: "iOS Push", icon: Smartphone },
   { key: "whatsapp", label: "WhatsApp", icon: MessageCircle },
-  { key: "slack", label: "Teams", icon: TeamsIcon },
+  { key: "slack", label: "Slack", icon: SlackIcon },
 ];
 
 // Absolute date + time (e.g. "Jan 30 2026, 2:14 PM") — not relative "2h ago".
