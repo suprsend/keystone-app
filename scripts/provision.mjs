@@ -305,6 +305,9 @@ const stage = process.argv[2] ?? "all";
 // `workspaces` is a standalone DevEx stage (create the workspaces from an account
 // token) — NOT part of `all`, because the provisioning stages below need each
 // workspace's key/secret, which only exist AFTER the dashboard key-gen + env paste.
+// A 409 "no_changes_to_commit" means the template/workflow is already committed with
+// identical content (common on a re-run) — that's success, not a failure.
+const isNoChanges = (r) => r?.status === 409 && r?.data?.error_code === "no_changes_to_commit";
 const doWorkspaces = stage === "workspaces";
 const doTenants = stage === "all" || stage === "tenants";
 const doUsers = stage === "all" || stage === "users";
@@ -641,8 +644,9 @@ if (doWorkspaces) {
         };
         await send("PATCH", `${base}/mock_data/`, { data: mockData });
         const commit = await send("PATCH", `${base}/commit/?commit_message=${encodeURIComponent("Initial version")}`);
-        console.log(`  template ${commit.ok ? "✓" : "✗"} ${slug} [${channels.join("+")}] (commit HTTP ${commit.status})`);
-        if (!commit.ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 250)}`);
+        const ok = commit.ok || isNoChanges(commit);
+        console.log(`  template ${ok ? "✓" : "✗"} ${slug} [${channels.join("+")}] (commit HTTP ${commit.status}${isNoChanges(commit) ? " — already up to date" : ""})`);
+        if (!ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 250)}`);
       } catch (e) {
         console.log(`  template ✗ ${slug}: ${e?.message ?? e}`);
       }
@@ -747,8 +751,9 @@ if (doWorkspaces) {
           tree: { nodes },
         };
         const commit = await send("POST", `${base}/?commit=true&commit_message=${encodeURIComponent("Object/API rework")}`, body);
-        console.log(`  workflow ${commit.ok ? "✓" : "✗"} ${n.slug} [${isEvent ? "event:TASKS_UPCOMING" : isObject ? "api,object→all subscribers" : "api,individual"}] (HTTP ${commit.status}, status=${commit.data?.status})`);
-        if (!commit.ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 400)}`);
+        const ok = commit.ok || isNoChanges(commit);
+        console.log(`  workflow ${ok ? "✓" : "✗"} ${n.slug} [${isEvent ? "event:TASKS_UPCOMING" : isObject ? "api,object→all subscribers" : "api,individual"}] (HTTP ${commit.status}${isNoChanges(commit) ? " — already up to date" : `, status=${commit.data?.status}`})`);
+        if (!ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 400)}`);
       } catch (e) {
         console.log(`  workflow ✗ ${n.slug}: ${e?.message ?? e}`);
       }
