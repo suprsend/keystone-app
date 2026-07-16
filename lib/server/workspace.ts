@@ -68,7 +68,7 @@ export interface WorkspaceSecrets {
 export function getWorkspaceSecrets(ws: Workspace): WorkspaceSecrets {
   const prefix = envPrefix(ws);
   const workspaceKey = process.env[`${prefix}_WORKSPACE_KEY`];
-  const signingKeyId = process.env[`${prefix}_SIGNING_KEY_ID`];
+  const signingKeyId = process.env[`${prefix}_SIGNING_KEY_UID`];
   const signingKeyB64 = process.env[`${prefix}_SIGNING_KEY_B64`];
   if (!workspaceKey || !signingKeyId || !signingKeyB64) {
     throw new Error(`Missing signing-key env for ${ws.slug}`);

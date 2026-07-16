@@ -421,14 +421,14 @@ async function createWorkspaces() {
     // Scaffold every credential this workspace needs, for YOU to paste from the
     // dashboard (Developers → API Keys). No API auto-creation — you copy the exact
     // values, so nothing can be mis-mapped. Only missing vars are written (never
-    // clobbered). NOTE on the signing key: SIGNING_KEY_ID must be the "Signing Key UID"
+    // clobbered). NOTE on the signing key: SIGNING_KEY_UID must be the "Signing Key UID"
     // (signing_key_…), NOT the "Signing Key ID" (ws_signk_…) — that's the value the
     // embedded editor's JWT `kid` requires (verified: uid → 200, id → 401).
     const creds = [
       [`${p}_WORKSPACE_KEY`, `# Workspace Key      — "Workspace Key and Secret" section`],
       [`${p}_WORKSPACE_SECRET`, `# Workspace Secret   — same section (shown once)`],
       [`${pub}_PUBLIC_KEY`, `# Public Key         — "Public Keys" section (the SS.PUBK… value)`],
-      [`${p}_SIGNING_KEY_ID`, `# Signing Key UID    — "Signing Keys" → the "signing_key_…" UID (NOT ws_signk_…)`],
+      [`${p}_SIGNING_KEY_UID`, `# Signing Key UID    — "Signing Keys" → the "signing_key_…" UID (NOT ws_signk_…)`],
       [`${p}_SIGNING_KEY_B64`, `# Signing Key Base64 — "Signing Keys" → Generate → copy the Base64 (shown once)`],
     ];
     const missing = creds.filter(([k]) => !have.has(k));

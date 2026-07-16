@@ -137,7 +137,7 @@ So you can trace a request end to end. SuprSend's own reference is at <https://d
     authed with `Authorization: <publicApiKey>` + `x-ss-signature: <ES256 JWT>`
 - **React SDK (browser)** — connects to SuprSend directly with an ES256 JWT minted here, 1-hour expiry:
   - Inbox JWT (`/api/subscriber-token`): claims `entity_type: subscriber`, scoped to the active `tenant_id`
-  - Editor JWT (`/api/editor-token`): signed with the workspace's signing key (`kid = SIGNING_KEY_ID`)
+  - Editor JWT (`/api/editor-token`): signed with the workspace's signing key (`kid = SIGNING_KEY_UID`)
 - **Node SDK** — wraps `hub.suprsend.com`; you call methods (`users.upsert`, `objects.*`,
   `tenants.get/upsert`, `workflows.trigger`, `messages.list`), not raw URLs.
 
@@ -149,7 +149,7 @@ So you can trace a request end to end. SuprSend's own reference is at <https://d
 | `SUPRSEND_MGMNT_URL` | Account-wide | Management API host (default `management-api.suprsend.com`). |
 | `SUPRSEND_HOST` | Account-wide | Hub host (default `hub.suprsend.com`). |
 | `<PREFIX>_WORKSPACE_KEY` / `_SECRET` | Per customer | Node SDK + signed Hub REST for that workspace. |
-| `<PREFIX>_SIGNING_KEY_ID` / `_B64` | Per customer | Signs the JWT for the embedded **template editor**. |
+| `<PREFIX>_SIGNING_KEY_UID` / `_B64` | Per customer | Signs the JWT for the embedded **template editor**. |
 | `NEXT_PUBLIC_<PREFIX>_PUBLIC_KEY` / `_WORKSPACE_KEY` | Per customer | Browser React SDK (inbox). |
 | `<PREFIX>_SLACK_WEBHOOK` | Per customer (optional) | Legacy Slack webhook. **Unused** — Slack delivery was removed (see Channels below). |
 
