@@ -19,42 +19,72 @@ This README has three parts. Read them in order:
 
 ---
 
-## Setup
+## Getting started
 
-Prerequisites: **Node.js 20+** and a **SuprSend account**.
+**Prerequisites:** Node.js 20+ and a SuprSend account.
+
+**1. Install**
 
 ```bash
-# 1 — Install
 npm install
-
-# 2 — Create your env file (it already has every blank line to fill)
-cp .env.example .env.local
-
-# 3 — Make sure two workspaces exist in SuprSend, named "Acme" and "Globex".
-#     New account? Create them in the dashboard ("Add workspace"), OR create them
-#     via API (put your service token in .env.local first, then):
-#         node --env-file=.env.local scripts/provision.mjs workspaces
-
-# 4 — Fill in .env.local. Every value comes from the SuprSend dashboard:
-#       SUPRSEND_SERVICE_TOKEN   → Account Settings → Service Tokens
-#       per workspace            → switch to it → Developers → API Keys (5 values each)
-#     Each line in .env.local has a comment above it saying exactly what to paste. SAVE the file.
-
-# 5 — Provision each workspace: tenants, users, objects, categories, templates, workflows
-node --env-file=.env.local scripts/provision.mjs
-
-# 6 — Run
-npm run dev                    # http://localhost:3000
 ```
 
-Step 5 is required — the app *reads* its tenants / categories / workflows from SuprSend and does **not**
-create them on startup; an unprovisioned workspace renders empty states.
+**2. Add your credentials**
 
-> **Why every credential is pasted (no auto-creation):** the Management API's key-creation endpoints return
-> values that don't map cleanly to what the app needs — the REST "API Key" is *not* the SDK's Workspace
-> Key + Secret, and a signing key's `id` (`ws_signk_…`) is *not* the editor JWT's `kid`, which must be the
-> **UID** (`signing_key_…`). Copying the exact dashboard values into `.env.local` avoids every one of those
-> pitfalls.
+```bash
+cp .env.example .env.local
+```
+
+Fill in `.env.local` — every value comes from the SuprSend dashboard. The [environment variables](#environment-variables) table below shows where each one lives.
+
+**3. Provision SuprSend**
+
+```bash
+node --env-file=.env.local scripts/provision.mjs
+```
+
+Creates the tenants, users, objects, categories, templates, and workflows the app reads. Required — the app reads these live and does not create them at runtime, so an unprovisioned workspace renders empty states.
+
+**4. Run**
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Environment variables
+
+`.env.local` already lists every variable, ready to fill. All values come from the SuprSend dashboard:
+
+| Variable | Where to find it |
+|---|---|
+| `SUPRSEND_SERVICE_TOKEN` | Account Settings → Service Tokens |
+| `SUPRSEND_<WS>_WORKSPACE_KEY` / `_SECRET` | Workspace → Developers → API Keys → **Workspace Key and Secret** |
+| `NEXT_PUBLIC_SUPRSEND_<WS>_PUBLIC_KEY` | → **Public Keys** (the `SS.PUBK…` value) |
+| `SUPRSEND_<WS>_SIGNING_KEY_UID` | → **Signing Keys** → the `signing_key_…` **UID** (not the `ws_signk_…` ID) |
+| `SUPRSEND_<WS>_SIGNING_KEY_B64` | → **Signing Keys** → Generate → the Base64 |
+
+`<WS>` is `ACME` or `GLOBEX`. The per-workspace keys live at
+`https://app.suprsend.com/en/<workspace-slug>/developers/api-keys` — the slug is usually `acme` / `globex`
+(SuprSend derives it from the workspace name), but it can differ per account, so switch workspaces in the
+dashboard rather than relying on the URL.
+
+### Creating the workspaces (first-time only)
+
+The app expects two SuprSend workspaces named **Acme** and **Globex**. If your account doesn't have them,
+create them in the dashboard (**Add workspace**), or generate them from your service token:
+
+```bash
+node --env-file=.env.local scripts/provision.mjs workspaces
+```
+
+Then continue from step 2.
+
+> **Why every credential is pasted (no auto-creation):** SuprSend's Management API can create the keys, but
+> the values it returns don't map 1:1 to what the app needs — the REST "API Key" is *not* the SDK's
+> Workspace Key + Secret, and a signing key's `id` (`ws_signk_…`) is *not* the editor JWT's `kid`, which
+> must be the UID (`signing_key_…`). Copying the exact dashboard values sidesteps all of those pitfalls.
 
 ---
 
