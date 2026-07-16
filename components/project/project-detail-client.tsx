@@ -9,11 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TenantDefaultsClient } from "@/components/admin/tenant-defaults-client";
 import { PreferenceCenter } from "@/components/preferences/preference-center";
 import { ProjectResources } from "@/components/project/project-resources";
-import { ProjectOverview } from "@/components/project/project-overview";
+import { ProjectOverview, ProjectCostField } from "@/components/project/project-overview";
 import { ProjectStateControl } from "@/components/project/project-state-control";
 import { cn } from "@/lib/utils";
 
-// Project detail (Manage). A project IS a SuprSend tenant (preferences/brand)
+// Project detail (Projects). A project IS a SuprSend tenant (preferences/brand)
 // AND object (membership).
 const TABS: { key: string; label: string }[] = [
   { key: "overview", label: "Project Overview" },
@@ -75,12 +75,14 @@ export function ProjectDetailClient({ id }: { id: string }) {
 
   return (
     <>
+      {/* Header — the project's scalar metadata (state, total cost) sits with the
+          title; the tabs below hold the real content. */}
       <div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          <span className="flex items-center gap-2 text-sm text-muted-foreground">
-            State: <ProjectStateControl tenant={id} canManage={canManage} />
-          </span>
+          <ProjectStateControl tenant={id} canManage={canManage} />
+          <span className="text-muted-foreground/40">·</span>
+          <ProjectCostField tenant={id} canManage={canManage} />
         </div>
       </div>
 

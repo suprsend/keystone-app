@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { Plus, ListTodo, MessageSquare, Wallet } from "lucide-react";
+import { Plus, ListTodo, MessageSquare, Wallet, Pencil } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { avatarColor, initials } from "@/lib/people";
 import { cn } from "@/lib/utils";
@@ -41,33 +41,34 @@ interface Comment {
   mentionId?: string;
 }
 
-// Project Overview — three sections: a dashboard panel (placeholder), a comment thread,
-// and the task table. Comments and tasks live on the project OBJECT and drive the
-// Comment Added / Task Completed / Tasks Coming Up workflows.
+// Project Overview — the project's real content: a comment thread and the task table,
+// both full width. (Total cost is a single scalar, so it lives inline in the project
+// header — see ProjectCostField.) Comments and tasks live on the project OBJECT and
+// drive the Comment Added / Task Completed / Tasks Coming Up workflows.
 export function ProjectOverview({ id }: { id: string }) {
   const { actorId, actorRole } = useAppState();
   const canManage = actorRole === "Admin" || actorRole === "Project Manager";
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <CostBudgetPanel tenant={id} canManage={canManage} />
-        </div>
-        <CommentsPanel tenant={id} actorId={actorId} canComment />
-      </div>
+      <CommentsPanel tenant={id} actorId={actorId} canComment />
       <TasksPanel tenant={id} actorId={actorId} canManage={canManage} />
     </div>
   );
 }
 
-/* ── Cost / Budget — a single number on the project OBJECT. It is what the Project
+/* ── Total cost — a single number on the project OBJECT. It is what the Project
    Started / Paused notifications compare against the category's `Cost > N` threshold:
-   below the threshold those notifications do not send. Editable by Admin / PM. ── */
-function CostBudgetPanel({ tenant, canManage }: { tenant: string; canManage: boolean }) {
+   below the threshold those notifications do not send. Editable by Admin / PM.
+
+   Rendered INLINE in the project header, not as a card: it's one scalar value, so a
+   full panel (with a permanently-open, usually-empty input) both overweights it and
+   reads badly. Shows the value as text; managers click the pencil to edit. ── */
+export function ProjectCostField({ tenant, canManage }: { tenant: string; canManage: boolean }) {
   const [cost, setCost] = React.useState<number | null>(null);
   const [draft, setDraft] = React.useState("");
   const [loaded, setLoaded] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
 
   React.useEffect(() => {
     let active = true;
@@ -107,6 +108,7 @@ function CostBudgetPanel({ tenant, canManage }: { tenant: string; canManage: boo
         return;
       }
       setCost(n);
+      setEditing(false);
       toast.success("Project cost saved.");
     } catch {
       toast.error("Couldn’t reach SuprSend.");
@@ -117,42 +119,58 @@ function CostBudgetPanel({ tenant, canManage }: { tenant: string; canManage: boo
 
   const dirty = draft.trim() !== "" && Number(draft) !== cost;
 
+  if (!loaded) return <Skeleton className="h-5 w-28 rounded" />;
+
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="relative w-28">
+          <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+          <Input
+            type="number"
+            min={0}
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && dirty) save();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            placeholder="50000"
+            className="h-8 pl-5 text-sm"
+          />
+        </span>
+        <Button size="sm" className="h-8" onClick={save} disabled={busy || !dirty}>
+          {busy ? "Saving…" : "Save"}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditing(false)} disabled={busy}>
+          Cancel
+        </Button>
+      </span>
+    );
+  }
+
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          <Wallet className="size-4 text-muted-foreground" /> Total Cost
-        </h3>
-        {loaded && (
-          <span className="text-sm font-semibold text-[var(--brand-blue)]">
-            {cost === null ? "—" : `$${cost.toLocaleString("en-US")} USD`}
-          </span>
-        )}
-      </div>
-      {!loaded ? (
-        <Skeleton className="h-9 w-full rounded-md" />
-      ) : canManage ? (
-        <div className="flex items-center gap-2">
-          <div className="relative max-w-40">
-            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-            <Input
-              type="number"
-              min={0}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="e.g. 50000"
-              className="pl-6"
-            />
-          </div>
-          <span className="text-sm text-muted-foreground">USD</span>
-          <Button size="sm" onClick={save} disabled={busy || !dirty}>
-            {busy ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">{cost === null ? "Not set." : `$${cost.toLocaleString("en-US")} USD`}</p>
+    <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+      <Wallet className="size-3.5" />
+      Total cost:
+      <span className={cn("font-medium", cost === null ? "text-muted-foreground" : "text-foreground")}>
+        {cost === null ? "Not set" : `$${cost.toLocaleString("en-US")} USD`}
+      </span>
+      {canManage && (
+        <button
+          type="button"
+          aria-label="Edit total cost"
+          onClick={() => {
+            setDraft(cost === null ? "" : String(cost));
+            setEditing(true);
+          }}
+          className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Pencil className="size-3.5" />
+        </button>
       )}
-    </div>
+    </span>
   );
 }
 
