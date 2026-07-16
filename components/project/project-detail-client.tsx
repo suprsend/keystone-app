@@ -4,7 +4,6 @@ import * as React from "react";
 import { Bell } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { getTenant, isTenantId, type TenantId } from "@/lib/tenants";
-import { getProjects } from "@/lib/projects";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TenantDefaultsClient } from "@/components/admin/tenant-defaults-client";
@@ -14,27 +13,16 @@ import { ProjectOverview } from "@/components/project/project-overview";
 import { ProjectStateControl } from "@/components/project/project-state-control";
 import { cn } from "@/lib/utils";
 
-// Project detail (Manage). Keystone's internal tab bar is shown for product
-// fidelity; only Overview (placeholder), Resources and Notifications are wired.
-// A project IS a SuprSend tenant (preferences/brand) AND object (membership).
-const TABS: { key: string; label: string; fn?: boolean }[] = [
-  { key: "overview", label: "Project Overview", fn: true },
-  { key: "financials", label: "Financials" },
-  { key: "summary", label: "Summary" },
-  { key: "timelines", label: "Timelines" },
-  { key: "resources", label: "Resources", fn: true },
-  { key: "wbs", label: "WBS" },
-  { key: "milestones", label: "Milestones" },
-  { key: "air", label: "AIR" },
-  { key: "comments", label: "Comments/Events" },
-  { key: "history", label: "History" },
-  { key: "governance", label: "Governance" },
-  { key: "reports", label: "Reports/Utilities" },
-  { key: "notifications", label: "Notifications", fn: true },
+// Project detail (Manage). A project IS a SuprSend tenant (preferences/brand)
+// AND object (membership).
+const TABS: { key: string; label: string }[] = [
+  { key: "overview", label: "Project Overview" },
+  { key: "resources", label: "Resources" },
+  { key: "notifications", label: "Notifications" },
 ];
 
 export function ProjectDetailClient({ id }: { id: string }) {
-  const { workspace, tenant, setTenant, actorRole, projects, projectsLoaded } = useAppState();
+  const { tenant, setTenant, actorRole, projects, projectsLoaded } = useAppState();
   const canManage = actorRole === "Admin" || actorRole === "Project Manager";
   const [active, setActive] = React.useState("overview");
   // Validate the project EXISTS live in this customer (seeded OR newly created), from
@@ -84,7 +72,6 @@ export function ProjectDetailClient({ id }: { id: string }) {
   const seeded = isTenantId(id);
   const project = seeded ? getTenant(id as TenantId) : null;
   const title = project?.fullName ?? liveName;
-  const meta = getProjects(workspace).find((p) => p.tenantId === id);
 
   return (
     <>
@@ -97,37 +84,23 @@ export function ProjectDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Hardcoded project summary (decorative) — shown to EVERYONE, like the nav. */}
-      <ProjectSummary health={meta?.health} />
-
-      {/* Keystone internal tab bar */}
+      {/* Project detail tab bar */}
       <div className="shrink-0 overflow-x-auto border-b border-border">
         <nav className="flex w-max items-center gap-1">
-          {TABS.map((t) =>
-            t.fn ? (
-              <button
-                key={t.key}
-                onClick={() => setActive(t.key)}
-                className={cn(
-                  "-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide transition-colors",
-                  active === t.key
-                    ? "border-[var(--brand-blue)] text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ) : (
-              <span
-                key={t.key}
-                aria-disabled
-                title="Not part of this demo"
-                className="-mb-px cursor-default whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                {t.label}
-              </span>
-            ),
-          )}
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActive(t.key)}
+              className={cn(
+                "-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+                active === t.key
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </nav>
       </div>
 
@@ -135,42 +108,6 @@ export function ProjectDetailClient({ id }: { id: string }) {
       {active === "resources" && <ProjectResources />}
       {active === "notifications" && <ProjectNotifications tenantId={id} />}
     </>
-  );
-}
-
-// Decorative project summary cards (Keystone chrome). Values are hardcoded; the
-// health badge colour follows the project's health. Shown to every viewer.
-function ProjectSummary({ health }: { health?: string }) {
-  const score =
-    health === "Off track"
-      ? { n: 300, cls: "bg-red-100 text-red-700" }
-      : health === "At risk"
-        ? { n: 200, cls: "bg-amber-100 text-amber-800" }
-        : { n: 100, cls: "bg-emerald-100 text-emerald-700" };
-  const Badge = (
-    <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold", score.cls)}>{score.n}</span>
-  );
-  const label = "text-[10px] uppercase tracking-wide text-muted-foreground";
-  const value = "text-[13px] font-medium text-foreground";
-  return (
-    <div className="flex flex-wrap gap-3">
-      <div className="rounded-lg border border-border bg-card px-4 py-3">
-        <div className="mb-2 text-[13px] font-semibold text-foreground">Current Schedule</div>
-        <div className="flex items-start gap-8">
-          <div className="flex flex-col gap-1"><span className={label}>Health Score</span>{Badge}</div>
-          <div className="flex flex-col gap-1"><span className={label}>Target End</span><span className={value}>12/31/2026</span></div>
-          <div className="flex flex-col gap-1"><span className={label}>Projected End</span><span className={value}>04/29/2027</span></div>
-        </div>
-      </div>
-      <div className="rounded-lg border border-border bg-card px-4 py-3">
-        <div className="mb-2 text-[13px] font-semibold text-foreground">Current Financial</div>
-        <div className="flex items-start gap-8">
-          <div className="flex flex-col gap-1"><span className={label}>Health Score</span>{Badge}</div>
-          <div className="flex flex-col gap-1"><span className={label}>Budget</span><span className={value}>$1.2M</span></div>
-          <div className="flex flex-col gap-1"><span className={label}>EAC</span><span className={value}>$6,600 (56 hrs)</span></div>
-        </div>
-      </div>
-    </div>
   );
 }
 
