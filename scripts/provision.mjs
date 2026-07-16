@@ -56,9 +56,85 @@ const RECIPIENTS = {
   "tasks-upcoming": ["Team Member", "Project Manager"],
   "comment-added": ["Project Manager", "Team Member"],
   "tagged-on-project": ["Project Manager", "Team Member", "Project Sponsor", "Process Owner"],
+  "budget-alert": ["Project Manager", "Project Sponsor", "Process Owner"],
+};
+
+// ── Category condition attributes ("properties") ──────────────────────────────
+// These are the workspace DEFAULTS that the workflow conditions read
+// ($category.properties.*) and that the app's Preferences screen edits:
+//   role    → the Recipients column (which roles a notification targets)
+//   except  → the Except column (people always skipped)
+//   include → "Always notify" (people notified regardless of role)
+//   cost    → the Conditions column (an integer gate; only Budget Alert uses it)
+// A tenant (project) or user can override each — that IS the preference model this
+// app demonstrates, so provisioning them is what makes the demo work.
+const ROLE_CHOICES = ["Project Manager", "Project Sponsor", "Process Owner", "Team Member"];
+const dynamicUsers = (key, label, optional) => ({
+  key, label, value_type: "list_dynamic", is_optional: optional,
+  edit_policy: "editable", dynamic_choices_key: "workspace_users", default_value: null,
+});
+// `extra` carries the cost attribute for the notifications that gate on a threshold.
+function categoryProps(slug, extra = []) {
+  return [
+    {
+      key: "role", label: "Role", value_type: "list_choice", is_optional: false, edit_policy: "editable",
+      choices: ROLE_CHOICES.map((r) => ({ label: r, value: r })),
+      // SuprSend rejects [] — an empty role list is expressed as null.
+      default_value: RECIPIENTS[slug]?.length ? RECIPIENTS[slug] : null,
+    },
+    dynamicUsers("except", "Except", false),
+    dynamicUsers("include", "Always notify", true),
+    ...extra,
+  ];
+}
+const costProp = (label, value) => ({
+  key: "cost", label, value_type: "integer", is_optional: false, edit_policy: "editable", default_value: value,
+});
+
+// Comment Added is the digest showcase: the account default is a daily digest, and a
+// project (tenant) or a person can override the frequency/time from the app.
+const COMMENT_DIGEST = {
+  enabled: true,
+  options: [
+    { id: "instant", label: "Instant", frequency: "instantly", is_default: false },
+    { id: "hourly", label: "Hourly", frequency: "hourly", interval: 2, is_default: false,
+      time: { edit_policy: "editable", default_value: "18:00" } },
+    { id: "daily_6pm", label: "Daily", frequency: "daily", interval: 1, is_default: true,
+      time: { edit_policy: "locked", default_value: "00:00" } },
+  ],
 };
 const roleSlug = (r) => r.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const recipientTags = (slug) => (RECIPIENTS[slug] ?? []).map((r) => `recip:${roleSlug(r)}`);
+
+// ── Workflow conditions ───────────────────────────────────────────────────────
+// These are what turn the category properties above into actual gating, and they are
+// what makes the preference model demonstrable. Each block is OR'd; args within a
+// block are AND'd. Shapes verified against a live reference workspace:
+//   role    — the subscriber's per-project role is in the category's role list
+//   cost    — the trigger's `cost` exceeds the category's threshold (Budget Alert)
+//   except  — the subscriber isn't on the Except list …
+//   EMPTY   — …plus a twin block for when Except is empty (NOT_CONTAINS does not
+//             match against an empty list, so the empty case needs its own branch)
+//   include — "Always notify" wins regardless of role
+//   object  — lets the project OBJECT through so SuprSend can expand it into subscribers
+const A_ROLE = { op: "CONTAINS", value: "$recipient.subscription.role", variable: "properties.role", variable_ns: "$category" };
+const A_COST = { op: ">", value: "$category.properties.cost", variable: "cost", variable_ns: "" };
+const A_EXCEPT_NOT = { op: "NOT_CONTAINS", value: "$recipient.distinct_id", variable: "properties.except", variable_ns: "$category" };
+const A_EXCEPT_EMPTY = { op: "EMPTY", value: "", variable: "properties.except", variable_ns: "$category" };
+const A_INCLUDE = { op: "CONTAINS", value: "$recipient.distinct_id", variable: "properties.include", variable_ns: "$category" };
+const A_IS_OBJECT = { op: "==", value: '"object"', variable: "$type", variable_ns: "$recipient" };
+const block = (args) => ({ type: "expression_v1", expression_v1: { op: "AND", args } });
+
+function conditionsFor(slug) {
+  // Budget Alert additionally gates on the cost threshold.
+  const gate = slug === "budget-alert" ? [A_ROLE, A_COST] : [A_ROLE];
+  return [
+    block([...gate, A_EXCEPT_NOT]),
+    block([A_INCLUDE]),
+    block([A_IS_OBJECT]),
+    block([...gate, A_EXCEPT_EMPTY]),
+  ];
+}
 
 // OBJECT-fan-out notifications: triggered with the project OBJECT as recipient,
 // SuprSend fans out to ALL of its subscribers. These are the notifications whose
@@ -74,7 +150,7 @@ const recipientTags = (slug) => (RECIPIENTS[slug] ?? []).map((r) => `recip:${rol
 // The other four notifications target a person determined by the ACTION (the
 // assignee, the @mentioned person, the new/previous PM) — SuprSend can't infer
 // that from the object, so the app triggers those to the specific recipient(s).
-const OBJECT_NOTIFS = new Set(["project-started", "project-paused", "comment-added", "task-completed"]);
+const OBJECT_NOTIFS = new Set(["project-started", "project-paused", "comment-added", "task-completed", "budget-alert"]);
 
 // A project's team, built from the shared seed (lib/roster-seed.json) by tenant id.
 // Email ALWAYS plus-addresses to the safe inbox so test sends reach only us (see
@@ -115,19 +191,25 @@ const WORKSPACES = [
 // Grouped into sections under the `transactional` root. opt_in = on by default.
 const CATEGORY_SECTIONS = [
   { name: "Assignments", categories: [
-    { category: "project-assigned", name: "Project Assigned", description: "When a project manager is assigned or changed.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"] },
+    { category: "project-assigned", name: "Project Assigned", description: "When a project manager is assigned or changed.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"], properties: categoryProps("project-assigned") },
   ] },
   { name: "Project status", categories: [
-    { category: "project-started", name: "Project Started", description: "When a project's status is set to in-flight.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"] },
-    { category: "project-paused", name: "Project Paused", description: "When a project is paused.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"] },
+    { category: "project-started", name: "Project Started", description: "When a project's status is set to in-flight.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"], properties: categoryProps("project-started") },
+    { category: "project-paused", name: "Project Paused", description: "When a project is paused.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"], properties: categoryProps("project-paused") },
   ] },
   { name: "Tasks", categories: [
-    { category: "task-completed", name: "Task Completed", description: "When a task on a project is marked complete.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"] },
-    { category: "tasks-upcoming", name: "Tasks Coming Up", description: "When a task assigned to you is approaching its due date.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"] },
+    { category: "task-completed", name: "Task Completed", description: "When a task on a project is marked complete.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"], properties: categoryProps("task-completed") },
+    { category: "tasks-upcoming", name: "Tasks Coming Up", description: "When a task assigned to you is approaching its due date.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"], properties: categoryProps("tasks-upcoming") },
   ] },
   { name: "Collaboration", categories: [
-    { category: "comment-added", name: "Comment Added", description: "When a comment is added to a project you're on.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox", "slack"] },
-    { category: "tagged-on-project", name: "Tagged on a Project", description: "When someone @mentions you on a project.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox", "slack"] },
+    { category: "comment-added", name: "Comment Added", description: "When a comment is added to a project you're on.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox", "slack"], properties: categoryProps("comment-added"), digest_schedule: COMMENT_DIGEST },
+    { category: "tagged-on-project", name: "Tagged on a Project", description: "When someone @mentions you on a project.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox", "slack"], properties: categoryProps("tagged-on-project") },
+  ] },
+  // Budget Alert is the CONDITIONS showcase: it only sends when the project's cost
+  // exceeds this threshold (`cost > $category.properties.cost`), and an Admin/PM can
+  // change the threshold per project from the app.
+  { name: "Budget", categories: [
+    { category: "budget-alert", name: "Budget Alert", description: "When a project's cost exceeds its budget ceiling.", default_preference: "opt_in", default_opt_in_channels: ["email", "inbox"], properties: categoryProps("budget-alert", [costProp("Cost Exceeded", 30000)]) },
   ] },
 ];
 
@@ -170,6 +252,11 @@ const NOTIFICATIONS = [
     sample: { is_batch: true, batch_count: 3, payload: { project_id: "acme-aero", comment_author: "Karen Brooks", comment_body: "Pushed the latest FMEA — can you review section 3?", project_link: LINK } } },
   { slug: "tagged-on-project", name: "Tagged on a Project", subject: "{{actor_name}} tagged you on {{$brand.brand_name}}", line: "{{actor_name}} tagged you in a comment on {{$brand.brand_name}}:<br/><br/>&ldquo;{{comment_body}}&rdquo;", inboxHeader: "{{actor_name}} tagged you", channels: ["email", "inbox", "slack"],
     sample: { actor_name: "Marcus Hale", comment_body: "Sarah, can you confirm the FMEA scope before Friday?", project_link: LINK } },
+  // Budget Alert — the CONDITIONS showcase. Its workflow only sends when the trigger's
+  // `cost` exceeds the category's threshold (`cost > $category.properties.cost`), which
+  // an Admin/PM can change per project. Object fan-out, so the role condition picks who.
+  { slug: "budget-alert", name: "Budget Alert", subject: "Budget exceeded on {{$brand.brand_name}}", line: "{{$brand.brand_name}} has passed its budget ceiling — the project's cost is now ${{cost}}.", inboxHeader: "Budget exceeded: {{$brand.brand_name}}",
+    sample: { cost: 45000, project_link: LINK } },
 ];
 
 // The batched Comment Added template — its own definition because it renders a
@@ -744,10 +831,14 @@ if (doWorkspaces) {
           ...(isEvent ? { trigger_events: ["TASKS_UPCOMING"] } : {}),
           category: catSlug(n.name),
           tags: ["workspace-activity", ...recipientTags(n.slug)],
-          // Conditions are OMITTED on purpose: a re-run then PRESERVES whatever
-          // conditions are live (managed separately / from the app's preference UI).
-          // Do NOT add `conditions: []` here — that would wipe the live role/except/
-          // self-action/cost/object-block conditions.
+          // Conditions ARE provisioned (see conditionsFor): without them a fresh
+          // workspace has no role/except/cost gating at all, so there is nothing to
+          // demonstrate. They are safe to re-apply because they are static STRUCTURE —
+          // every value a human tunes (role, except, include, the cost threshold) lives
+          // on the preference CATEGORY (and its tenant/user overrides), which these
+          // expressions only read via $category.properties.*. Re-running restores the
+          // baseline gating without touching anyone's preferences.
+          conditions: conditionsFor(n.slug),
           tree: { nodes },
         };
         const commit = await send("POST", `${base}/?commit=true&commit_message=${encodeURIComponent("Object/API rework")}`, body);
