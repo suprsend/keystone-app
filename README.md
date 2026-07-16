@@ -27,23 +27,18 @@ Prerequisites: **Node.js 20+** and a **SuprSend account**.
 # 1 — Install
 npm install
 
-# 2 — Add your SuprSend ACCOUNT service token
+# 2 — Create your env file (it already has every blank line to fill)
 cp .env.example .env.local
-#    Open .env.local and paste your token into SUPRSEND_SERVICE_TOKEN.
-#    (SuprSend dashboard → Account Settings → Service Tokens)
 
-# 3 — Create the workspaces + scaffold their credential placeholders
-node --env-file=.env.local scripts/provision.mjs workspaces
-#    Creates each workspace and appends 5 labelled blank lines per workspace to .env.local.
+# 3 — Make sure two workspaces exist in SuprSend, named "Acme" and "Globex".
+#     New account? Create them in the dashboard ("Add workspace"), OR create them
+#     via API (put your service token in .env.local first, then):
+#         node --env-file=.env.local scripts/provision.mjs workspaces
 
-# 4 — Paste each workspace's 5 credentials from the dashboard
-#    In SuprSend, for EACH workspace (Acme, then Globex):
-#      • switch to that workspace (top-right switcher) → Developers → API Keys
-#      • copy each value into the matching (labelled) line in .env.local:
-#          WORKSPACE_KEY   / WORKSPACE_SECRET   ← "Workspace Key and Secret" section
-#          PUBLIC_KEY                            ← "Public Keys" (the SS.PUBK… value)
-#          SIGNING_KEY_ID                        ← "Signing Keys" → the signing_key_… UID (NOT ws_signk_…)
-#          SIGNING_KEY_B64                       ← "Signing Keys" → Generate → the Base64
+# 4 — Fill in .env.local. Every value comes from the SuprSend dashboard:
+#       SUPRSEND_SERVICE_TOKEN   → Account Settings → Service Tokens
+#       per workspace            → switch to it → Developers → API Keys (5 values each)
+#     Each line in .env.local has a comment above it saying exactly what to paste. SAVE the file.
 
 # 5 — Provision each workspace: tenants, users, objects, categories, templates, workflows
 node --env-file=.env.local scripts/provision.mjs
@@ -52,17 +47,14 @@ node --env-file=.env.local scripts/provision.mjs
 npm run dev                    # http://localhost:3000
 ```
 
-**Steps 3–5 are required.** Step 3 creates each workspace from your account token and writes blank,
-labelled credential lines. Step 4 is where you paste those credentials from the dashboard. Step 5 then
-populates each workspace, because the app *reads* its tenants / categories / workflows from SuprSend — it
-does **not** create them on startup. Point it at a workspace that hasn't been provisioned and every screen
-renders an **empty state** (no mock fallback).
+Step 5 is required — the app *reads* its tenants / categories / workflows from SuprSend and does **not**
+create them on startup; an unprovisioned workspace renders empty states.
 
-> **Why you paste the credentials (no auto-creation):** the Management API's key-creation endpoints return
+> **Why every credential is pasted (no auto-creation):** the Management API's key-creation endpoints return
 > values that don't map cleanly to what the app needs — the REST "API Key" is *not* the SDK's Workspace
 > Key + Secret, and a signing key's `id` (`ws_signk_…`) is *not* the editor JWT's `kid`, which must be the
-> **UID** (`signing_key_…`). Copying the exact dashboard values avoids every one of those pitfalls. The
-> `.env.local` lines the script writes are labelled with exactly which dashboard value goes where.
+> **UID** (`signing_key_…`). Copying the exact dashboard values into `.env.local` avoids every one of those
+> pitfalls.
 
 ---
 
