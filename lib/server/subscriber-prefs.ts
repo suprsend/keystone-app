@@ -80,7 +80,7 @@ export async function updateUserCategory(
   optOutChannels: string[],
   tenantId: string,
 ): Promise<{ ok: boolean; status: number }> {
-  // Mock mode: no keys to sign a subscriber JWT — accept the toggle as a no-op.
+  // No-keys mode: no keys to sign a subscriber JWT — accept the toggle as a no-op.
   if (!hasWorkspaceKeys(ws)) return { ok: true, status: 200 };
   const res = await fetch(
     `${HOST}/v2/subscriber/${encodeURIComponent(distinctId)}/category/${encodeURIComponent(category)}/?tenant_id=${encodeURIComponent(tenantId)}`,

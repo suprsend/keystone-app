@@ -3,7 +3,7 @@
 // runtime is pulled into the client bundle.
 import { Mail, Bell, MessageSquare, MessageCircle, Smartphone } from "lucide-react";
 import type { ComponentType } from "react";
-import { TeamsIcon } from "@/components/icons/teams-icon";
+import { SlackIcon } from "@/components/icons/slack-icon";
 import type { MessageRecord } from "@/lib/server/messages";
 
 export type BadgeTone = "default" | "secondary" | "destructive" | "outline";
@@ -112,11 +112,8 @@ export function humanizeNode(ref?: string | null): string {
 }
 
 // Icons are rendered as `<Icon className="size-4" />`. Most are lucide (monochrome,
-// inherit text color); Teams is the official multicolor mark (ignores text color by
+// inherit text color); Slack is the official multicolor mark (ignores text color by
 // design). The widened type covers both — consumers pass className only.
-// NOTE: the `slack` KEY is kept (templates/workflows/prefs still use it internally),
-// but it's branded as Microsoft TEAMS — Keystone uses Teams, not Slack, and there's
-// no real Teams channel wired (display-only; the Slack webhook delivery was removed).
 export const CHANNEL_ICON: Record<string, ComponentType<{ className?: string }>> = {
   email: Mail,
   inbox: Bell,
@@ -124,7 +121,7 @@ export const CHANNEL_ICON: Record<string, ComponentType<{ className?: string }>>
   androidpush: Smartphone,
   iospush: Smartphone,
   whatsapp: MessageCircle,
-  slack: TeamsIcon,
+  slack: SlackIcon,
 };
 
 export const CHANNEL_LABEL: Record<string, string> = {
@@ -134,7 +131,7 @@ export const CHANNEL_LABEL: Record<string, string> = {
   androidpush: "Android Push",
   iospush: "iOS Push",
   whatsapp: "WhatsApp",
-  slack: "Teams",
+  slack: "Slack",
 };
 
 export function timeAgo(iso?: string | null): string {

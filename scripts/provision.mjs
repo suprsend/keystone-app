@@ -1,6 +1,12 @@
 // Keystone provisioning — creates SuprSend resources in each customer workspace.
 // Run: node --env-file=.env.local scripts/provision.mjs [stage]
-// Stages: tenants | users | all (default: all)
+// Stages: tenants | users | objects | categories | templates | workflows | all (default: all)
+//
+// DevEx bootstrap: `workspaces` (standalone) creates the workspaces AND their auth
+// keys (public/signing/api) from an account service token and writes them into
+// .env.local — run it FIRST, then run `all`. It is NOT part of `all` (the stages
+// below read the per-workspace key/secret it writes). One key→env mapping is still
+// unconfirmed with SuprSend; see createWorkspaces() below.
 //
 // ⚠️ NOT a safe blind re-run for the `templates`/`workflows` stages:
 //   • templates: re-pushes the raw-HTML templates here → OVERWRITES any Visual
@@ -14,16 +20,22 @@
 // The tenants/users stages are idempotent upserts and safe to re-run.
 
 import pkg from "@suprsend/node-sdk";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// Sample seed data — a real deployment reads people from its own DB and syncs them
+// to SuprSend via this script. The demo roster (ids/names/roles per project) is the
+// single source of truth in lib/roster-seed.json, shared with the app (lib/people.ts)
+// so provisioning and the running app never diverge.
+import rosterSeed from "../lib/roster-seed.json" with { type: "json" };
 const Suprsend = pkg.Suprsend ?? pkg.default?.Suprsend ?? pkg.default ?? pkg;
 
 // EMAIL SAFETY: every address routes to the ONE safe inbox via plus-addressing —
 // never a real company domain, never a bare name@domain. Configurable per deployment
-// (defaults to nikita+<x>@suprsend.com).
-const SAFE_EMAIL_USER = process.env.SAFE_TEST_EMAIL_USER || "nikita";
-const SAFE_EMAIL_DOMAIN = process.env.SAFE_TEST_EMAIL_DOMAIN || "suprsend.com";
+// (defaults to demo+<x>@example.com — a reserved domain that never delivers; set
+// SAFE_TEST_EMAIL_USER/_DOMAIN to your own tester to actually receive test sends).
+const SAFE_EMAIL_USER = process.env.SAFE_TEST_EMAIL_USER || "demo";
+const SAFE_EMAIL_DOMAIN = process.env.SAFE_TEST_EMAIL_DOMAIN || "example.com";
 const safeMail = (local) => `${SAFE_EMAIL_USER}+${local}@${SAFE_EMAIL_DOMAIN}`;
-const HON = "acme";
-const HSY = "globex";
+const ROSTER = rosterSeed.roster;
 
 // Object type for projects (project = object, for recipient fan-out + roles).
 const OBJECT_TYPE = "project";
@@ -64,14 +76,18 @@ const recipientTags = (slug) => (RECIPIENTS[slug] ?? []).map((r) => `recip:${rol
 // that from the object, so the app triggers those to the specific recipient(s).
 const OBJECT_NOTIFS = new Set(["project-started", "project-paused", "comment-added", "task-completed"]);
 
-// A project's team. Email ALWAYS plus-addresses to the safe inbox so test sends reach
-// only us (see safeMail above). `_label` is kept for readability of the call sites.
-function team(_label, rows) {
-  return rows.map(([id, name, role]) => ({ id, name, email: safeMail(name.toLowerCase().replace(/\s+/g, ".")), role }));
+// A project's team, built from the shared seed (lib/roster-seed.json) by tenant id.
+// Email ALWAYS plus-addresses to the safe inbox so test sends reach only us (see
+// safeMail above); it's derived from the name to match lib/people.ts exactly.
+function team(tenantId) {
+  return (ROSTER[tenantId] ?? []).map(({ id, name, role }) => ({
+    id, name, email: safeMail(name.toLowerCase().replace(/\s+/g, ".")), role,
+  }));
 }
 
 // One block per customer workspace. envPrefix mirrors lib/server/workspace.ts.
-// Each tenant (= project) carries its team; users are the union of all teams.
+// Each tenant (= project) carries its team (from the seed); users are the union of
+// all teams. Tenant name/brand colours are provisioning-only config and live here.
 const WORKSPACES = [
   {
     slug: "acme",
@@ -80,28 +96,8 @@ const WORKSPACES = [
     // {{$brand.*}} fallback shown in Admin → Branding. The customer's own brand.
     defaultBrand: { name: "Acme", primary: "#2563EB", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
-      {
-        id: "acme-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81",
-        members: team(HON, [
-          ["u_dana_carter", "Dana Carter", "Project Manager"],
-          ["u_marcus_hale", "Marcus Hale", "Project Sponsor"],
-          ["u_karen_brooks", "Karen Brooks", "Process Owner"],
-          ["u_evan_cole", "Evan Cole", "Team Member"],
-          ["u_sarah_bennett", "Sarah Bennett", "Team Member"],
-          ["u_luke_harper", "Luke Harper", "Team Member"],
-        ]),
-      },
-      {
-        id: "acme-bms", name: "Building Technologies — Smart Controls v4", primary: "#00857A",
-        members: team(HON, [
-          ["u_grace_miller", "Grace Miller", "Project Manager"],
-          ["u_tom_freed", "Tom Freed", "Project Sponsor"],
-          ["u_nancy_reed", "Nancy Reed", "Process Owner"],
-          ["u_ben_stark", "Ben Stark", "Team Member"],
-          ["u_mia_foster", "Mia Foster", "Team Member"],
-          ["u_owen_daniels", "Owen Daniels", "Team Member"],
-        ]),
-      },
+      { id: "acme-aero", name: "Aerospace — Turbine Sensors Generation 2", primary: "#0F4C81", members: team("acme-aero") },
+      { id: "acme-bms", name: "Building Technologies — Smart Controls v4", primary: "#00857A", members: team("acme-bms") },
     ],
   },
   {
@@ -109,28 +105,8 @@ const WORKSPACES = [
     prefix: "SUPRSEND_GLOBEX",
     defaultBrand: { name: "Globex", primary: "#0F766E", secondary: "#1D1D1D", tertiary: "#6B7280" },
     tenants: [
-      {
-        id: "globex-bar", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902",
-        members: team(HSY, [
-          ["u_riley_fox", "Riley Fox", "Project Manager"],
-          ["u_dale_burns", "Dale Burns", "Project Sponsor"],
-          ["u_amy_sullivan", "Amy Sullivan", "Process Owner"],
-          ["u_carl_hayes", "Carl Hayes", "Team Member"],
-          ["u_jade_morgan", "Jade Morgan", "Team Member"],
-          ["u_paul_nash", "Paul Nash", "Team Member"],
-        ]),
-      },
-      {
-        id: "globex-minis", name: "Foil-Wrapped Minis", primary: "#7C3AED",
-        members: team(HSY, [
-          ["u_iris_lane", "Iris Lane", "Project Manager"],
-          ["u_greg_pope", "Greg Pope", "Project Sponsor"],
-          ["u_laura_west", "Laura West", "Process Owner"],
-          ["u_zach_allen", "Zach Allen", "Team Member"],
-          ["u_tara_vance", "Tara Vance", "Team Member"],
-          ["u_noah_bishop", "Noah Bishop", "Team Member"],
-        ]),
-      },
+      { id: "globex-bar", name: "Zero-Sugar Bar — Line Extension", primary: "#ED7902", members: team("globex-bar") },
+      { id: "globex-minis", name: "Foil-Wrapped Minis", primary: "#7C3AED", members: team("globex-minis") },
     ],
   },
 ];
@@ -326,6 +302,13 @@ function toJsonnet(v) {
 }
 
 const stage = process.argv[2] ?? "all";
+// `workspaces` is a standalone DevEx stage (create the workspaces from an account
+// token) — NOT part of `all`, because the provisioning stages below need each
+// workspace's key/secret, which only exist AFTER the dashboard key-gen + env paste.
+// A 409 "no_changes_to_commit" means the template/workflow is already committed with
+// identical content (common on a re-run) — that's success, not a failure.
+const isNoChanges = (r) => r?.status === 409 && r?.data?.error_code === "no_changes_to_commit";
+const doWorkspaces = stage === "workspaces";
 const doTenants = stage === "all" || stage === "tenants";
 const doUsers = stage === "all" || stage === "users";
 const doObjects = stage === "all" || stage === "objects";
@@ -355,10 +338,137 @@ function clientFor(prefix) {
   return base_url ? new Suprsend(key, secret, { base_url }) : new Suprsend(key, secret);
 }
 
-for (const ws of WORKSPACES) {
-  console.log(`\n=== ${ws.slug} ===`);
-  const c = clientFor(ws.prefix);
-  const slackUrl = process.env[`${ws.prefix}_SLACK_WEBHOOK`];
+// ── Workspace bootstrap (DevEx) ───────────────────────────────────────────────
+// `node scripts/provision.mjs workspaces` — from an ACCOUNT service token, create each
+// customer workspace (POST /v1/workspace/, ServiceToken auth) and then scaffold ALL of
+// its credentials as labelled placeholders in .env.local for YOU to paste from the
+// dashboard (Developers → API Keys). We intentionally do NOT auto-create the keys: the
+// Management API's create endpoints return values that don't map 1:1 to what the app
+// needs (e.g. the REST "API Key" ≠ the SDK's Workspace Key+Secret; the signing-key
+// `id` ≠ the editor JWT `kid`, which must be the UID). Copying the exact dashboard
+// values removes every mapping pitfall. Idempotent: only missing vars are written.
+async function createWorkspaces() {
+  const token = process.env.SUPRSEND_SERVICE_TOKEN;
+  if (!token) {
+    console.error("✗ SUPRSEND_SERVICE_TOKEN is required to create workspaces (Account → Service Tokens).");
+    process.exit(1);
+  }
+  const mgmt = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
+  const hdr = { Authorization: `ServiceToken ${token}`, "Content-Type": "application/json" };
+  const api = async (method, path, body) => {
+    try {
+      const res = await fetch(`${mgmt}${path}`, { method, headers: hdr, body: body ? JSON.stringify(body) : undefined });
+      return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+    } catch (e) {
+      return { ok: false, status: 0, data: { detail: e?.message ?? String(e) } };
+    }
+  };
+  // Pull the workspace we care about out of a Management API response, tolerating
+  // BOTH shapes: a list ({ results: [...] }) or a single workspace object.
+  const pickWs = (data, name) => {
+    if (!data || typeof data !== "object") return null;
+    if (Array.isArray(data.results)) {
+      return data.results.find((w) => (w?.name || "").toLowerCase() === name.toLowerCase())
+        || (data.results.length === 1 ? data.results[0] : null);
+    }
+    return data.slug || data.uid ? data : null;
+  };
+
+  // Read existing .env.local — only ADD vars that are missing (idempotent; never
+  // clobber, and never re-create a credential we already hold).
+  const envPath = new URL("../.env.local", import.meta.url);
+  const existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
+  const have = new Set(
+    existing.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#") && l.includes("="))
+      .map((l) => l.slice(0, l.indexOf("=")).trim()).filter(Boolean),
+  );
+  const out = []; // lines to append to .env.local
+
+  for (const ws of WORKSPACES) {
+    const name = ws.defaultBrand?.name || ws.slug;
+    const p = ws.prefix; // e.g. SUPRSEND_ACME
+    const pub = `NEXT_PUBLIC_SUPRSEND_${ws.slug.replace(/-/g, "_").toUpperCase()}`;
+    console.log(`\n=== ${name} (${ws.slug}) ===`);
+
+    // 1) Get-or-create the workspace → its SuprSend slug (the Management API path arg).
+    //    List first (reuse an existing one); create only if absent. Tolerant of both
+    //    response shapes, and logs the raw response if it still can't resolve.
+    const listed = await api("GET", "/v1/workspace/");
+    let record = pickWs(listed.data, name);
+    let how = `existing (GET ${listed.status})`;
+    if (!record) {
+      const created = await api("POST", "/v1/workspace/", { name, description: `Keystone reference app — ${ws.slug} workspace` });
+      record = pickWs(created.data, name);
+      how = `created (POST ${created.status})`;
+      if (!record) {
+        // May have been created but returned in a shape we didn't match — re-list.
+        const relisted = await api("GET", "/v1/workspace/");
+        record = pickWs(relisted.data, name);
+        how = `re-listed (GET ${relisted.status})`;
+        if (!record) {
+          console.log(`  ✗ couldn't resolve workspace (GET ${listed.status}, POST ${created.status}, re-GET ${relisted.status}).`);
+          console.log(`    GET  response: ${JSON.stringify(listed.data).slice(0, 300)}`);
+          console.log(`    POST response: ${JSON.stringify(created.data).slice(0, 300)}`);
+          continue;
+        }
+      }
+    }
+    if (!record.slug) { console.log(`  ✗ workspace resolved but has no slug: ${JSON.stringify(record).slice(0, 300)}`); continue; }
+    const slug = record.slug;
+    console.log(`  ✓ workspace ${how} — uid=${record.uid} slug=${slug} mode=${record.mode}`);
+    out.push(`\n# ── ${name} — uid=${record.uid} slug=${slug} mode=${record.mode} ──`);
+
+    // Scaffold every credential this workspace needs, for YOU to paste from the
+    // dashboard (Developers → API Keys). No API auto-creation — you copy the exact
+    // values, so nothing can be mis-mapped. Only missing vars are written (never
+    // clobbered). NOTE on the signing key: SIGNING_KEY_UID must be the "Signing Key UID"
+    // (signing_key_…), NOT the "Signing Key ID" (ws_signk_…) — that's the value the
+    // embedded editor's JWT `kid` requires (verified: uid → 200, id → 401).
+    const creds = [
+      [`${p}_WORKSPACE_KEY`, `# Workspace Key      — "Workspace Key and Secret" section`],
+      [`${p}_WORKSPACE_SECRET`, `# Workspace Secret   — same section (shown once)`],
+      [`${pub}_PUBLIC_KEY`, `# Public Key         — "Public Keys" section (the SS.PUBK… value)`],
+      [`${p}_SIGNING_KEY_UID`, `# Signing Key UID    — "Signing Keys" → the "signing_key_…" UID (NOT ws_signk_…)`],
+      [`${p}_SIGNING_KEY_B64`, `# Signing Key Base64 — "Signing Keys" → Generate → copy the Base64 (shown once)`],
+    ];
+    const missing = creds.filter(([k]) => !have.has(k));
+    if (missing.length === 0) {
+      console.log(`  • all credentials already set — skipped`);
+    } else {
+      out.push(`# Paste these from SuprSend → "${name}" → Developers → API Keys:`);
+      for (const [k, note] of missing) out.push(note, `${k}=`);
+      console.log(`  → wrote ${missing.length} credential placeholder(s) — paste them from the dashboard`);
+    }
+  }
+
+  // Ensure the service token itself is persisted for the later provisioning run.
+  if (!have.has("SUPRSEND_SERVICE_TOKEN")) out.unshift("", "# Account-level service token (management API):", `SUPRSEND_SERVICE_TOKEN=${token}`);
+
+  if (out.length) {
+    const sep = existing && !existing.endsWith("\n") ? "\n" : "";
+    writeFileSync(envPath, existing + sep + out.join("\n") + "\n");
+    console.log(`\n✓ Updated .env.local (existing values untouched).`);
+  } else {
+    console.log(`\n✓ .env.local already has every credential — nothing to do.`);
+  }
+
+  console.log(
+    "\nNext steps:\n" +
+    "  1. Open .env.local and paste each workspace's 5 credentials from the dashboard\n" +
+    "     (SuprSend → the workspace → Developers → API Keys). Each blank line has a\n" +
+    "     comment above it saying exactly which value to copy.\n" +
+    "  2. Provision resources:  node --env-file=.env.local scripts/provision.mjs\n" +
+    "  3. Run the app:          npm run dev",
+  );
+}
+
+if (doWorkspaces) {
+  await createWorkspaces();
+} else {
+  for (const ws of WORKSPACES) {
+    console.log(`\n=== ${ws.slug} ===`);
+    const c = clientFor(ws.prefix);
+    const slackUrl = process.env[`${ws.prefix}_SLACK_WEBHOOK`];
 
   if (doTenants) {
     for (const t of ws.tenants) {
@@ -534,8 +644,9 @@ for (const ws of WORKSPACES) {
         };
         await send("PATCH", `${base}/mock_data/`, { data: mockData });
         const commit = await send("PATCH", `${base}/commit/?commit_message=${encodeURIComponent("Initial version")}`);
-        console.log(`  template ${commit.ok ? "✓" : "✗"} ${slug} [${channels.join("+")}] (commit HTTP ${commit.status})`);
-        if (!commit.ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 250)}`);
+        const ok = commit.ok || isNoChanges(commit);
+        console.log(`  template ${ok ? "✓" : "✗"} ${slug} [${channels.join("+")}] (commit HTTP ${commit.status}${isNoChanges(commit) ? " — already up to date" : ""})`);
+        if (!ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 250)}`);
       } catch (e) {
         console.log(`  template ✗ ${slug}: ${e?.message ?? e}`);
       }
@@ -640,12 +751,14 @@ for (const ws of WORKSPACES) {
           tree: { nodes },
         };
         const commit = await send("POST", `${base}/?commit=true&commit_message=${encodeURIComponent("Object/API rework")}`, body);
-        console.log(`  workflow ${commit.ok ? "✓" : "✗"} ${n.slug} [${isEvent ? "event:TASKS_UPCOMING" : isObject ? "api,object→all subscribers" : "api,individual"}] (HTTP ${commit.status}, status=${commit.data?.status})`);
-        if (!commit.ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 400)}`);
+        const ok = commit.ok || isNoChanges(commit);
+        console.log(`  workflow ${ok ? "✓" : "✗"} ${n.slug} [${isEvent ? "event:TASKS_UPCOMING" : isObject ? "api,object→all subscribers" : "api,individual"}] (HTTP ${commit.status}${isNoChanges(commit) ? " — already up to date" : `, status=${commit.data?.status}`})`);
+        if (!ok) console.log(`    ${JSON.stringify(commit.data).slice(0, 400)}`);
       } catch (e) {
         console.log(`  workflow ✗ ${n.slug}: ${e?.message ?? e}`);
       }
     }
+  }
   }
 }
 

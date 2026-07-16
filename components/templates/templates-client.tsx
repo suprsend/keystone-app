@@ -13,10 +13,9 @@ import {
   Smartphone,
   Pencil,
   PenSquare,
-  Sparkles,
   Trash2,
 } from "lucide-react";
-import { TeamsIcon } from "@/components/icons/teams-icon";
+import { SlackIcon } from "@/components/icons/slack-icon";
 import {
   Tooltip,
   TooltipContent,
@@ -26,7 +25,6 @@ import {
 import { useAppState } from "@/components/providers";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { TemplateDetailDialog } from "@/components/templates/template-detail-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +49,7 @@ const CHANNEL_META: { key: string; label: string; icon: React.ComponentType<{ cl
   { key: "androidpush", label: "Android Push", icon: Smartphone },
   { key: "iospush", label: "iOS Push", icon: Smartphone },
   { key: "whatsapp", label: "WhatsApp", icon: MessageCircle },
-  { key: "slack", label: "Teams", icon: TeamsIcon },
+  { key: "slack", label: "Slack", icon: SlackIcon },
 ];
 
 // Absolute date + time (e.g. "Jan 30 2026, 2:14 PM") — not relative "2h ago".
@@ -75,7 +73,6 @@ function TemplatesBody() {
   const router = useRouter();
   const [rows, setRows] = React.useState<TemplateRow[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [detailSlug, setDetailSlug] = React.useState<string | null>(null);
 
   const reload = React.useCallback(async () => {
     try {
@@ -203,9 +200,6 @@ function TemplatesBody() {
                     <DropdownMenuItem onSelect={() => router.push(`/admin/templates/${t.slug}`)}>
                       <PenSquare className="size-4" /> Open editor
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setDetailSlug(t.slug)}>
-                      <Sparkles className="size-4" /> Edit with AI
-                    </DropdownMenuItem>
                     <DropdownMenuItem variant="destructive" onSelect={() => remove(t.slug, t.name)}>
                       <Trash2 className="size-4" /> Delete
                     </DropdownMenuItem>
@@ -216,13 +210,6 @@ function TemplatesBody() {
           ))}
         </div>
       )}
-
-      <TemplateDetailDialog
-        slug={detailSlug}
-        open={detailSlug !== null}
-        onOpenChange={(o) => !o && setDetailSlug(null)}
-        onChanged={reload}
-      />
     </>
   );
 }

@@ -347,7 +347,7 @@ export async function savePreferenceConfig(
   ws: WorkspaceSlug,
   edits: PrefEdit[],
 ): Promise<{ ok: boolean; status: number }> {
-  // Mock mode: no service token to commit a new version — accept edits as a no-op.
+  // No-keys mode: no service token to commit a new version — accept edits as a no-op.
   if (!hasWorkspaceKeys(getWorkspace(ws))) return { ok: true, status: 200 };
   const doc = await readDoc(ws);
   const bySlug = new Map(edits.map((e) => [e.category, e]));

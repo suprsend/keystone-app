@@ -6,9 +6,10 @@
 // PM-set project choice, which beats the user's global profile choice, which beats
 // the organization default (role-based). Nothing is locked in this release.
 //
-// All data here is mock so the app previews without SuprSend keys. When keys land,
-// notifications map to SuprSend workflows + preference categories and subscriptions
-// to per-user (and per-tenant) preferences.
+// The data here is the app's static notification catalog (this PRD model), not
+// runtime data pulled from SuprSend. With keys, each notification maps to a SuprSend
+// workflow + preference category, and subscriptions to per-user (and per-tenant)
+// preferences.
 
 import type { PersonRole } from "@/lib/people";
 import type { WorkspaceSlug } from "@/lib/workspaces";
