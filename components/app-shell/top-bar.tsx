@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppState, ADMIN_ACTOR } from "@/components/providers";
@@ -14,53 +14,47 @@ import { InboxBell } from "./inbox-bell";
 import { SearchProjects } from "./search-projects";
 import { AddProjectDialog } from "@/components/project/add-project-dialog";
 
-// One functional nav link. Two weight tiers in the header:
-//  • functional links (Workspace / Manage / Administer) → bold + dark
-//  • decorative, non-wired items (NavStatic) → normal weight + grey
+// One functional nav link. These are plain links (not menus), so they carry no
+// caret — a chevron here would promise a dropdown that doesn't exist. The active
+// section is marked with a full-strength label + an accent underline, so "you are
+// here" is unmistakable; inactive links are muted and brighten on hover.
 function NavLink({
   label,
   href,
   active,
-  caret,
 }: {
   label: string;
   href: string;
   active: boolean;
-  caret?: boolean;
 }) {
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-0.5 whitespace-nowrap py-1 font-bold transition-colors",
-        active ? "text-foreground" : "text-foreground/80 hover:text-foreground",
+        "relative whitespace-nowrap py-3 font-semibold transition-colors outline-none",
+        "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:rounded-sm",
+        active
+          ? "text-foreground after:bg-[var(--brand-blue)]"
+          : "text-muted-foreground hover:text-foreground after:bg-transparent",
       )}
     >
       {label}
-      {caret && <ChevronDown className="size-3.5 opacity-70" />}
     </Link>
   );
 }
 
-// A decorative nav item — present for product fidelity, not wired. Rendered in a
-// lighter tone than the functional links so non-working options read as inactive.
-function NavStatic({
-  label,
-  caret,
-  title,
-}: {
-  label: string;
-  caret?: boolean;
-  title?: string;
-}) {
+// A non-wired nav item — present for product fidelity. Muted so it reads as
+// unavailable, with a tooltip explaining how to enable it.
+function NavStatic({ label, title }: { label: string; title?: string }) {
   return (
     <span
       title={title}
       aria-disabled
-      className="flex cursor-default items-center gap-0.5 whitespace-nowrap py-1 font-normal text-muted-foreground/60"
+      className="cursor-default whitespace-nowrap py-3 font-semibold text-muted-foreground/50"
     >
       {label}
-      {caret && <ChevronDown className="size-3.5 opacity-70" />}
     </span>
   );
 }
@@ -71,13 +65,13 @@ export function TopBar() {
   const [addOpen, setAddOpen] = React.useState(false);
 
   // The viewer is the Admin overseer, or an impersonated user. Administer is only
-  // functional for the Admin. Manage ALWAYS opens the projects listing — never the
+  // functional for the Admin. Projects ALWAYS opens the projects listing — never the
   // old /user/work self-service view (the projects list is role-scoped anyway).
   const isAdminViewer = actorId === ADMIN_ACTOR || actorRole === "Admin";
-  const manageHref = "/project";
+  const projectsHref = "/project";
 
   const onAdmin = pathname.startsWith("/admin");
-  const onManage = pathname.startsWith("/project");
+  const onProjects = pathname.startsWith("/project");
   const onWorkspace = pathname.startsWith("/workspace");
 
   return (
@@ -88,15 +82,14 @@ export function TopBar() {
           <span className="text-[17px] font-black leading-none tracking-tight text-foreground">Keystone</span>
         </Link>
 
-        <nav className="hidden items-center gap-4 text-[13px] xl:flex">
+        <nav className="hidden items-center gap-5 self-stretch text-[13px] xl:flex">
           <NavLink label="Workspace" href="/workspace/resource-pool" active={onWorkspace} />
-          <NavLink label="Manage" href={manageHref} active={onManage} caret />
+          <NavLink label="Projects" href={projectsHref} active={onProjects} />
           {isAdminViewer ? (
-            <NavLink label="Administer" href="/admin/preferences/defaults" active={onAdmin} caret />
+            <NavLink label="Administer" href="/admin/preferences/defaults" active={onAdmin} />
           ) : (
             <NavStatic
               label="Administer"
-              caret
               title="Switch to Admin (Viewing as) to administer the workspace"
             />
           )}
