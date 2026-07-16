@@ -2,11 +2,17 @@
 
 A Next.js app showing how **Keystone** (a demo project-management product) wires up **SuprSend** for its
 notifications: an admin notification catalog, message templates, per-project and per-person preferences,
-digests, multi-brand, and an in-app inbox. Two demo companies — **Acme** and **Globex** — each run their
-projects on it.
+digests, multi-brand, and an in-app inbox.
 
-Every screen is backed by real SuprSend API calls, so you can trace exactly *what each screen does* and
-*which SuprSend call it makes*.
+This repo is the code companion to the guide
+**[Modelling customers in B2B](https://docs.suprsend.com/docs/modelling-customers-b2b)** — the guide
+explains the concepts; this app shows the same model in code. Every screen is backed by real SuprSend API
+calls, so you can trace exactly *what each screen does* and *which SuprSend call it makes*.
+
+**The demo world.** Keystone has two customers, **Acme** and **Globex**. Acme runs two projects —
+**Aerospace** (`acme-aero`) and **Building Controls** (`acme-bms`). **Globex** is the second customer,
+there to demonstrate workspace isolation: its own keys, brand, people, and data, entirely separate from
+Acme's.
 
 > Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind v4 · shadcn/Radix UI.
 > SDKs: `@suprsend/node-sdk`, `@suprsend/react`, `@suprsend/react-editor`.
@@ -98,7 +104,8 @@ this mapping:
 |---|---|---|
 | **Customer** — e.g. Acme, Globex | **Workspace** | One workspace per customer = full data isolation, its own API keys, its own brand. |
 | **Project** | **Tenant** *and* **Object**, created together | The **Tenant** holds the project's brand + per-project preferences. The **Object** holds the team roster — each member is subscribed to it with a role, so one trigger can notify everyone on the project. |
-| **Notification type** — “Project Started”, “Task Completed”… | A **workflow**, filed under a **preference category** | The workflow is what sends the notification. Its category is the on/off switch a person controls; related notification types can share one category. |
+| **Notification type** — “Project Started”, “Task Completed”… | A **preference category** | The grouping a person switches on/off. Several notifications can share one category. |
+| **A notification** — the message that actually goes out | A **workflow** | What sends it, filed under its type's category. |
 | **Person** — a team member | **User** (`distinct_id`) | The recipient of notifications. |
 | **Admin's default settings** | **Workspace category defaults** | The org-wide on/off + allowed channels for each notification type. |
 | **A project's settings** | **Tenant preferences** | Per-project overrides (e.g. block a channel for this project). |
@@ -132,6 +139,10 @@ Keystone (product)
         └── Person = User           (subscribed to the project object, with a role)
 ```
 
+> **Looking ahead — sub-tenants.** SuprSend is developing sub-tenants, which would let a **customer** be
+> the tenant and its **projects** be sub-tenants beneath it, instead of today's workspace-per-customer +
+> tenant-per-project. It isn't available yet, so this app models the hierarchy above.
+
 ---
 
 ## Part 2 — The SuprSend integration: which API does what
@@ -152,7 +163,9 @@ There are **four** surfaces. The **Used in the app** column says which feature e
 
 #### Endpoints, by surface
 
-So you can trace a request end to end. SuprSend's own reference is at <https://docs.suprsend.com>.
+So you can trace a request end to end. The concepts behind this mapping are in the guide
+[Modelling customers in B2B](https://docs.suprsend.com/docs/modelling-customers-b2b); the full API
+reference is at <https://docs.suprsend.com>.
 
 - **Management API** — `https://management-api.suprsend.com/{version}/{WORKSPACE_KEY}/{resource}`. The
   customer's **workspace key is a path segment** (not the app's slug), and the version differs by resource:
@@ -181,7 +194,7 @@ So you can trace a request end to end. SuprSend's own reference is at <https://d
 | `<PREFIX>_WORKSPACE_KEY` / `_SECRET` | Per customer | Node SDK + signed Hub REST for that workspace. |
 | `<PREFIX>_SIGNING_KEY_UID` / `_B64` | Per customer | Signs the JWT for the embedded **template editor**. |
 | `NEXT_PUBLIC_<PREFIX>_PUBLIC_KEY` / `_WORKSPACE_KEY` | Per customer | Browser React SDK (inbox). |
-| `<PREFIX>_SLACK_WEBHOOK` | Per customer (optional) | Legacy Slack webhook. **Unused** — Slack delivery was removed (see Channels below). |
+| `<PREFIX>_SLACK_WEBHOOK` | Per customer (optional) | If set, provisioning attaches this incoming webhook to each user so Slack sends work (see [Channels](#channels)). |
 
 `<PREFIX>` is derived from the customer slug: `acme` → `SUPRSEND_ACME`.
 Secrets never reach the browser; `.env.local` and `keys.txt` are gitignored.
@@ -191,12 +204,13 @@ Secrets never reach the browser; `.env.local` and `keys.txt` are gitignored.
 
 ### Channels
 
-Two channels appear throughout the app (templates, workflows, preference toggles):
+The templates here are authored for **email** and the **in-app inbox** (two of them also carry Slack
+content), and those are the channels the preference toggles surface.
 
-| Channel | Status |
-|---|---|
-| **Email** | Live — actually delivered. |
-| **In-app Inbox** | Live — the bell in the header, powered by the browser React SDK. |
+There is no notion of a channel being "live" in the model. A channel delivers once its **vendor is
+configured** in SuprSend — nothing about the model, the workflows, or this code changes per channel.
+Configure a vendor for SMS, WhatsApp, push, or Slack and that channel starts working the same way; the
+only thing to add is the template content for it.
 
 ---
 
