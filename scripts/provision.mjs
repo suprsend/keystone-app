@@ -30,9 +30,10 @@ const Suprsend = pkg.Suprsend ?? pkg.default?.Suprsend ?? pkg.default ?? pkg;
 
 // EMAIL SAFETY: every address routes to the ONE safe inbox via plus-addressing —
 // never a real company domain, never a bare name@domain. Configurable per deployment
-// (defaults to nikita+<x>@suprsend.com).
-const SAFE_EMAIL_USER = process.env.SAFE_TEST_EMAIL_USER || "nikita";
-const SAFE_EMAIL_DOMAIN = process.env.SAFE_TEST_EMAIL_DOMAIN || "suprsend.com";
+// (defaults to demo+<x>@example.com — a reserved domain that never delivers; set
+// SAFE_TEST_EMAIL_USER/_DOMAIN to your own tester to actually receive test sends).
+const SAFE_EMAIL_USER = process.env.SAFE_TEST_EMAIL_USER || "demo";
+const SAFE_EMAIL_DOMAIN = process.env.SAFE_TEST_EMAIL_DOMAIN || "example.com";
 const safeMail = (local) => `${SAFE_EMAIL_USER}+${local}@${SAFE_EMAIL_DOMAIN}`;
 const ROSTER = rosterSeed.roster;
 
