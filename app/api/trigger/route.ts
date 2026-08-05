@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, isSlug, INVALID_SLUG } from "@/lib/server/http";
 import { getActiveTenant, getActiveWorkspace } from "@/lib/server/workspace";
 import { triggerWorkflow, trackEvent, triggerUsers } from "@/lib/server/hub";
 import { getWorkflowTriggerData, getWorkflow } from "@/lib/suprsend-mgmt";
@@ -21,6 +21,9 @@ export async function POST(req: Request) {
     const tenant = await getActiveTenant(tenantOverride);
     if (!workflow_slug || !employee_id) {
       return NextResponse.json({ ok: false, error: "workflow_slug and employee_id are required." }, { status: 400 });
+    }
+    if (!isSlug(workflow_slug)) {
+      return NextResponse.json({ ok: false, error: INVALID_SLUG }, { status: 400 });
     }
 
     // How this workflow runs: event-type workflows only execute via track_event

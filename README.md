@@ -27,6 +27,20 @@ This README has three parts. Read them in order:
 
 ## Getting started
 
+> **⚠️ Run this locally. It has no authentication.**
+>
+> Keystone is a reference app: it ships with no login, and anyone who can reach it is treated as an
+> admin. Two routes mint SuprSend tokens for whoever asks —
+> [`/api/subscriber-token`](app/api/subscriber-token/route.ts) issues a subscriber token for any
+> `distinct_id` passed in the query string, and [`/api/editor-token`](app/api/editor-token/route.ts)
+> issues a template-editor token scoped to `entity_id: "*"` (every template in the workspace).
+>
+> That's fine on `localhost`. If you deploy it anywhere reachable, put it behind your own auth first.
+> And when you copy these patterns into your own product:
+>
+> - Derive `distinct_id` from your authenticated server-side session — **never** from client input.
+> - Gate the editor-token route to admins, and scope `entity_id` to specific templates.
+
 **Prerequisites:** Node.js 20+ and a SuprSend account.
 
 **1. Install**

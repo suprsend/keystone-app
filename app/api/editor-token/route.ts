@@ -35,6 +35,9 @@ export async function GET(req: Request) {
     const privateKey = Buffer.from(signingKeyB64, "base64").toString("utf-8");
     const now = Math.floor(Date.now() / 1000);
 
+    // DEMO ONLY: entity_id "*" grants edit access to EVERY template in the workspace,
+    // and this route is open to any caller. In production, gate it to admins and pass
+    // the specific template slug instead of "*".
     const payload = {
       workspace_uid: workspaceKey,
       entity_type: "template",

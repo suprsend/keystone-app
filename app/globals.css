@@ -76,7 +76,7 @@
   --brand-navy: oklch(0.205 0 0);
   --link: oklch(0.205 0 0);
 
-  /* Side-nav active state — subtle grey (was Accolade cream). */
+  /* Side-nav active state — subtle grey. */
   --nav-active: oklch(0.97 0 0);
   --nav-active-border: oklch(0.922 0 0);
   --nav-active-hover: oklch(0.985 0 0);
