@@ -78,7 +78,9 @@ back down with `suprsend template pull --dir suprsend/templates`, or edit the fi
 > idempotent upsert.
 
 > **Email needs a vendor.** A fresh SuprSend workspace has no email vendor configured, so email sends fail
-> while the in-app inbox works immediately. Configure one under **Vendors** if you want mail to land.
+> while the in-app inbox works immediately. Configure one under **Vendors** if you want mail to land. Test
+> addresses are also plus-addressed onto a single inbox that never delivers by default — see
+> `SAFE_TEST_EMAIL_USER` / `_DOMAIN` in `.env.example`.
 
 **4. Run**
 
