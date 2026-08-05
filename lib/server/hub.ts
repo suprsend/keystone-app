@@ -8,17 +8,14 @@ import { WorkflowTriggerRequest, Event as SuprsendEvent, SubscriberListBroadcast
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client } from "@/lib/server/workspace";
 
-/** Trigger a workflow for one recipient with the given data payload. When `actor`
- * (the distinct_id of the person who performed the action) is given, it's passed
- * natively so workflow conditions can reference `$actor.*` — e.g. a self-action
- * check that skips notifying the actor. We never compute recipients in-app. */
+/** Trigger a workflow for one recipient with the given data payload.
+ * We never compute recipients in-app. */
 export async function triggerWorkflow(
   ws: Workspace,
   workflow: string,
   distinctId: string,
   data: Record<string, unknown>,
   tenantId = "default",
-  actor?: string,
 ) {
   const c = client(ws);
   const req = new WorkflowTriggerRequest({
@@ -26,7 +23,6 @@ export async function triggerWorkflow(
     recipients: [{ distinct_id: distinctId }],
     tenant_id: tenantId,
     data,
-    ...(actor ? { actor: { distinct_id: actor } } : {}),
   });
   return c.workflows.trigger(req);
 }
@@ -78,7 +74,7 @@ export async function broadcastToList(
  */
 export async function triggerObjectWorkflow(
   ws: Workspace,
-  opts: { workflow: string; objectType: string; objectId: string; data?: Record<string, unknown>; actor?: string },
+  opts: { workflow: string; objectType: string; objectId: string; data?: Record<string, unknown> },
   tenantId = "default",
 ) {
   const c = client(ws);
@@ -87,9 +83,6 @@ export async function triggerObjectWorkflow(
     recipients: [{ object_type: opts.objectType, id: opts.objectId }],
     tenant_id: tenantId,
     data: opts.data ?? {},
-    // The actor (who performed the action) is passed natively so the workflow's
-    // self-action condition can skip them during object fan-out — no in-app filtering.
-    ...(opts.actor ? { actor: { distinct_id: opts.actor } } : {}),
   });
   return c.workflows.trigger(req);
 }
