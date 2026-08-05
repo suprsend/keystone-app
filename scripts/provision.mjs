@@ -2,22 +2,24 @@
 // Run: node --env-file=.env.local scripts/provision.mjs [stage]
 // Stages: tenants | users | objects | categories | templates | workflows | all (default: all)
 //
-// DevEx bootstrap: `workspaces` (standalone) creates the workspaces AND their auth
-// keys (public/signing/api) from an account service token and writes them into
-// .env.local — run it FIRST, then run `all`. It is NOT part of `all` (the stages
-// below read the per-workspace key/secret it writes). One key→env mapping is still
-// unconfirmed with SuprSend; see createWorkspaces() below.
+// Bootstrap: `workspaces` (standalone) creates the workspaces from an account service
+// token and appends a labelled placeholder to .env.local for each credential you then
+// paste from the dashboard (Developers → API Keys). It does NOT create the keys — see
+// createWorkspaces() for why. Run it FIRST, then paste the credentials, then run `all`,
+// which needs the per-workspace key/secret those placeholders hold.
 //
-// ⚠️ NOT a safe blind re-run for the `templates`/`workflows` stages:
-//   • templates: re-pushes the raw-HTML templates here → OVERWRITES any Visual
-//     Designer templates edited by hand in the dashboard. Don't re-run `templates`
-//     unless you intend to reset the VD work.
-//   • workflows: this script does NOT manage conditions (it omits them, so a re-run
-//     PRESERVES live conditions). The live role/except/self-action/cost/object-block
-//     /budget conditions are managed separately (and edited from the app's preference
-//     UI) — they are NOT re-applied here. NEVER reintroduce `conditions: []` here
-//     (that would wipe them).
-// The tenants/users stages are idempotent upserts and safe to re-run.
+// Pass --dry-run to print every API call the run would make without sending any.
+//
+// Re-run behaviour:
+//   • templates: re-pushes the templates in suprsend/templates/ → OVERWRITES any
+//     edits made by hand in the SuprSend editor. Only re-run when you intend to
+//     reset the live templates to what this repo holds.
+//   • workflows: re-applies the baseline conditions from conditionsFor(). Those are
+//     static structure — every value a human tunes (role, except, include, the cost
+//     threshold) lives on the preference CATEGORY and its tenant/user overrides,
+//     which the expressions only read. A re-run restores the gating without touching
+//     anyone's preferences.
+//   • tenants/users/objects/categories: idempotent upserts, safe to re-run.
 
 import pkg from "@suprsend/node-sdk";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -40,13 +42,11 @@ const ROSTER = rosterSeed.roster;
 // Object type for projects (project = object, for recipient fan-out + roles).
 const OBJECT_TYPE = "project";
 
-// Workflow-node timing. Demo-friendly so a batch closes / a reminder fires within
-// a test session (a real deployment would use ~30m batch, 3d reminder lead).
-const BATCH_WINDOW = "5m"; // Comment Added — batch window per project.
+// Workflow-node timing.
 const REMINDER_LEAD = "3d"; // Tasks Coming Up — reminder this far BEFORE due_date.
 
-// PRD recipient roles per notification. Also written to each workflow as
-// `recip:<role-slug>` tags so the app can read/edit recipient types LIVE (Task 6).
+// Recipient roles per notification. Also written to each workflow as
+// `recip:<role-slug>` tags so the app can read/edit recipient roles live.
 // Mirrors lib/notifications.ts (keys = provision/workflow slugs).
 const RECIPIENTS = {
   "project-assigned": ["Project Manager", "Process Owner"],
@@ -138,18 +138,13 @@ function conditionsFor(slug) {
 
 // OBJECT-fan-out notifications: triggered with the project OBJECT as recipient,
 // SuprSend fans out to ALL of its subscribers. These are the notifications whose
-// audience is "people on the project" (vs. an action-specific individual).
+// audience is "people on the project" (vs. an action-specific individual). Who
+// actually receives one is narrowed by the workflow's role/except conditions, which
+// read the preference category — see conditionsFor().
 //
-// ROLE FILTERING IS DEFERRED (founder, Jun 24): for now every subscriber on the
-// project receives these — we do NOT filter by role yet. When we add it, the
-// filter goes in a BRANCH step on `recipient.subscription.role` (the per-project
-// role on the object subscription) — proven to be the only placement that filters
-// per subscriber; the same condition at the trigger level matches no one because
-// the trigger gate runs before the object expands into individual subscribers.
-//
-// The other four notifications target a person determined by the ACTION (the
-// assignee, the @mentioned person, the new/previous PM) — SuprSend can't infer
-// that from the object, so the app triggers those to the specific recipient(s).
+// The rest target a person determined by the ACTION (the assignee, the @mentioned
+// person, the new PM) — SuprSend can't infer that from the object, so the app
+// triggers those to the specific recipient.
 const OBJECT_NOTIFS = new Set(["project-started", "project-paused", "comment-added", "task-completed", "budget-alert"]);
 
 // A project's team, built from the shared seed (lib/roster-seed.json) by tenant id.
@@ -187,7 +182,7 @@ const WORKSPACES = [
   },
 ];
 
-// Every workspace gets the same 7 categories (the user-facing preference toggles).
+// Every workspace gets the same 8 categories (the user-facing preference toggles).
 // Grouped into sections under the `transactional` root. opt_in = on by default.
 const CATEGORY_SECTIONS = [
   { name: "Assignments", categories: [
@@ -226,25 +221,26 @@ const LINK = "https://app.keystone.example/projects/demo";
 // batched templates, `sample` is ONE flat event + is_batch/batch_count (the
 // dashboard replicates payload × batch_count to build $batched_events).
 const NOTIFICATIONS = [
-  // PER-RECIPIENT COPY: one template, three messages keyed on `recipient_type`
-  // (fired per recipient by the Workspace Data action / fan-out). The new PM, the
-  // previous PM, and the process owner each get the right words — instead of one
-  // shared "you are now PM" going to everyone (the PRD defect this fixes).
+  // PER-RECIPIENT COPY: one template, different words per recipient, keyed on the
+  // reader's per-project role ($recipient.subscription.role) — which SuprSend
+  // resolves during object fan-out. The new PM reads "you are now the PM"; everyone
+  // else reads who the new PM is. The email says this with display conditions on the
+  // design blocks; inbox uses {{#compare}} below.
   { slug: "project-assigned", name: "Project Assigned",
-    subject: "{{#compare recipient_type '==' \"new_pm\"}}You're now managing {{$brand.brand_name}}{{else}}{{#compare recipient_type '==' \"previous_pm\"}}You've been removed from {{$brand.brand_name}}{{else}}New project manager for {{$brand.brand_name}}{{/compare}}{{/compare}}",
-    line: "{{#compare recipient_type '==' \"new_pm\"}}You are now the project manager for {{$brand.brand_name}}. The previous manager has been notified of the change.{{else}}{{#compare recipient_type '==' \"previous_pm\"}}You've been removed as the project manager for {{$brand.brand_name}}. {{new_pm_name}} is now managing it.{{else}}A new project manager, {{new_pm_name}}, was assigned to {{$brand.brand_name}}.{{/compare}}{{/compare}}",
-    inboxHeader: "{{#compare recipient_type '==' \"new_pm\"}}You're now PM of {{$brand.brand_name}}{{else}}{{#compare recipient_type '==' \"previous_pm\"}}Removed from {{$brand.brand_name}}{{else}}New PM for {{$brand.brand_name}}{{/compare}}{{/compare}}",
-    sample: { recipient_type: "new_pm", new_pm_name: "Dana Carter", previous_pm_name: "Evan Cole", project_link: LINK } },
-  { slug: "project-started", name: "Project Started", subject: "{{$brand.brand_name}} has started", line: "{{$brand.brand_name}} is now in-flight. Open the project to see your tasks and the current stage gate.", inboxHeader: "{{$brand.brand_name}} started",
+    subject: "Project manager changed for {{$brand.brand_name}}",
+    line: "{{#compare $recipient.subscription.role '==' \"Project Manager\"}}You are now the project manager for {{$brand.brand_name}}.{{else}}The new project manager for {{$brand.brand_name}} is {{new_pm_name}}.{{/compare}}",
+    inboxHeader: "{{#compare $recipient.subscription.role '==' \"Project Manager\"}}You're now PM of {{$brand.brand_name}}{{else}}Project manager changed for {{$brand.brand_name}}{{/compare}}",
+    sample: { new_pm_name: "Dana Carter", project_link: LINK } },
+  { slug: "project-started", name: "Project Started", subject: "{{$brand.brand_name}} has started", line: "Project {{$brand.brand_name}} is now in-flight. Open the project to see your tasks and the current stage gate.", inboxHeader: "{{$brand.brand_name}} started",
     sample: { project_link: LINK } },
-  { slug: "project-paused", name: "Project Paused", subject: "{{$brand.brand_name}} has been paused", line: "{{$brand.brand_name}} has been paused. You'll be notified when work restarts.", inboxHeader: "{{$brand.brand_name}} paused",
+  { slug: "project-paused", name: "Project Paused", subject: "{{$brand.brand_name}} has been paused", line: "The project {{$brand.brand_name}} has been paused. You'll be notified when work restarts.", inboxHeader: "{{$brand.brand_name}} paused",
     sample: { project_link: LINK } },
-  { slug: "task-completed", name: "Task Completed", subject: "Task completed: {{task_name}}", line: "{{task_assignee}} marked \"{{task_name}}\" complete on {{$brand.brand_name}}.", inboxHeader: "Task completed: {{task_name}}",
+  { slug: "task-completed", name: "Task Completed", subject: "Task completed: {{task_name}}", line: "{{task_assignee}} has completed the task \"{{task_name}}\" for the project {{$brand.brand_name}}.", inboxHeader: "Task completed: {{task_name}}",
     sample: { task_name: "Design FMEA review", task_assignee: "Karen Brooks", project_link: LINK } },
   // Tasks Coming Up — reminder fires a fixed window BEFORE the due date (Wait-Until
   // node). `due_date` is the machine ISO timestamp the delay pivots on; the template
   // shows the human `due_date_display`. Both are trigger fields (known at trigger).
-  { slug: "tasks-upcoming", name: "Tasks Coming Up", subject: "Due soon: {{task_name}}", line: "\"{{task_name}}\" on {{$brand.brand_name}} is due {{due_date_display}}.", inboxHeader: "Due soon: {{task_name}}",
+  { slug: "tasks-upcoming", name: "Tasks Coming Up", subject: "Due soon: {{task_name}}", line: "\"{{task_name}}\" for the project {{$brand.brand_name}} is due {{due_date_display}}.", inboxHeader: "Due soon: {{task_name}}",
     sample: { task_name: "Submit gate deliverables", task_id: "TASK-501", due_date: "2026-07-15T17:00:00Z", due_date_display: "Jul 15, 2026", project_link: LINK } },
   // Comment Added — BATCHED per project (batch_key=.project_id). The workflow sends
   // the `comment-added-batched` template, which renders the $batched_events list.
@@ -255,7 +251,7 @@ const NOTIFICATIONS = [
   // Budget Alert — the CONDITIONS showcase. Its workflow only sends when the trigger's
   // `cost` exceeds the category's threshold (`cost > $category.properties.cost`), which
   // an Admin/PM can change per project. Object fan-out, so the role condition picks who.
-  { slug: "budget-alert", name: "Budget Alert", subject: "Budget exceeded on {{$brand.brand_name}}", line: "{{$brand.brand_name}} has passed its budget ceiling — the project's cost is now ${{cost}}.", inboxHeader: "Budget exceeded: {{$brand.brand_name}}",
+  { slug: "budget-alert", name: "Budget Alert", subject: "Budget exceeded on {{$brand.brand_name}}", line: "{{$brand.brand_name}} has gone over its budget ceiling. Current cost is ${{cost}}. Please review the project budget.", inboxHeader: "Budget exceeded: {{$brand.brand_name}}",
     sample: { cost: 45000, project_link: LINK } },
 ];
 
@@ -273,62 +269,16 @@ const BATCHED_COMMENT = {
   inboxHeader: `${COMMENT_COUNT} on {{$brand.brand_name}}`,
 };
 
-function emailHtml(n) {
-  return `<div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
-  <p style="font-size:14px;color:#475569">Hi {{$recipient.name}},</p>
-  <p style="font-size:15px;line-height:1.5">${n.line}</p>
-  <p style="margin-top:24px"><a href="{{project_link}}" style="background:#5350F0;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-size:14px">Open in Keystone</a></p>
-  <p style="font-size:12px;color:#94a3b8;margin-top:28px">Sent by your innovation team via Keystone.</p>
-</div>`;
-}
-
-// Batched email: each item is a <tr> of the OUTER container table, with its own
-// nested layout table inside — the only structure that renders in the SuprSend
-// dashboard preview (inner-table {{#if}} between data rows shows raw handlebars).
-// Mirrors the known-good batched reference: a FULL HTML document with role=
-// "presentation" tables and each {{#if $batched_events.[n]}} wrapping a complete
-// <tr>. (The previous <div>-fragment + {{#compare}} version rendered raw in the
-// SuprSend preview.) Renders + sends both verified.
-function batchedCommentHtml() {
-  const item = (i) => `  {{#if $batched_events.[${i}]}}
-  <tr>
-    <td style="padding:16px 40px 0 40px;">
-      <p style="margin:0 0 6px 0;font-size:14px;font-weight:600;color:#1a1a2e;">{{$batched_events.[${i}].comment_author}}</p>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="border-left:3px solid #e5e7eb;padding:6px 0 6px 12px;font-size:13px;color:#51545e;line-height:1.5;">&ldquo;{{$batched_events.[${i}].comment_body}}&rdquo;</td></tr>
-      </table>
-    </td>
-  </tr>
-  {{/if}}`;
-  const items = Array.from({ length: 10 }, (_, i) => item(i)).join("\n");
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>New comments</title></head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;">
-<tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
-  <tr>
-    <td style="padding:32px 40px 0 40px;">
-      <p style="margin:0;font-size:14px;color:#475569;">Hi {{$recipient.name}},</p>
-      <h1 style="margin:12px 0 0 0;font-size:18px;font-weight:700;color:#1a1a2e;line-height:1.4;">You have ${COMMENT_COUNT} on {{$brand.brand_name}}.</h1>
-    </td>
-  </tr>
-  <tr><td style="padding:20px 40px 0 40px;"><div style="border-top:1px solid #e5e7eb;"></div></td></tr>
-${items}
-  <tr>
-    <td style="padding:24px 40px 32px 40px;">
-      <table role="presentation" cellpadding="0" cellspacing="0">
-        <tr><td style="background-color:#5350F0;border-radius:6px;"><a href="{{{$batched_events.[0].project_link}}}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">Open in Keystone</a></td></tr>
-      </table>
-      <p style="margin:20px 0 0 0;font-size:12px;color:#9a9ea6;">Sent by your innovation team via Keystone.</p>
-    </td>
-  </tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+// The email designs live in suprsend/templates/<slug>/email/default/ as a pair:
+// body.designer.json is the visual-designer block tree the editor canvas loads, and
+// body.designer.html is what SuprSend renders and sends. Both are pushed together —
+// design_json alone leaves the canvas blank, html alone leaves it uneditable.
+function emailDesigner(slug) {
+  const dir = new URL(`../suprsend/templates/${slug}/email/default/`, import.meta.url);
+  return {
+    html: readFileSync(new URL("body.designer.html", dir), "utf8"),
+    design_json: JSON.parse(readFileSync(new URL("body.designer.json", dir), "utf8")),
+  };
 }
 
 // Slack block content per notification (handlebars form; converted to JSONNET on
@@ -388,10 +338,21 @@ function toJsonnet(v) {
   return JSON.stringify(v);
 }
 
-const stage = process.argv[2] ?? "all";
-// `workspaces` is a standalone DevEx stage (create the workspaces from an account
-// token) — NOT part of `all`, because the provisioning stages below need each
-// workspace's key/secret, which only exist AFTER the dashboard key-gen + env paste.
+const args = process.argv.slice(2);
+// --dry-run prints every Management API call the run would make and sends none, so a
+// stage can be reviewed before it touches a workspace. It does NOT cover the Node SDK
+// stages (tenants/users/objects) — those are guarded separately, see DRY_RUN below.
+const DRY_RUN = args.includes("--dry-run");
+// Stand-in for a write that --dry-run suppressed. Reads (GET) still go through, so
+// stages that look something up before deciding what to write behave normally.
+const dryRunSkip = (method, path, body) => {
+  console.log(`  [dry-run] ${method} ${path}${body ? ` — ${JSON.stringify(body).length} bytes` : ""}`);
+  return { ok: true, status: 200, data: {} };
+};
+const stage = args.find((a) => !a.startsWith("--")) ?? "all";
+// `workspaces` is a standalone stage (create the workspaces from an account token) —
+// NOT part of `all`, because the provisioning stages below need each workspace's
+// key/secret, which only exist AFTER the dashboard key-gen + env paste.
 // A 409 "no_changes_to_commit" means the template/workflow is already committed with
 // identical content (common on a re-run) — that's success, not a failure.
 const isNoChanges = (r) => r?.status === 409 && r?.data?.error_code === "no_changes_to_commit";
@@ -443,6 +404,7 @@ async function createWorkspaces() {
   const mgmt = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
   const hdr = { Authorization: `ServiceToken ${token}`, "Content-Type": "application/json" };
   const api = async (method, path, body) => {
+    if (DRY_RUN && method !== "GET") return dryRunSkip(method, path, body);
     try {
       const res = await fetch(`${mgmt}${path}`, { method, headers: hdr, body: body ? JSON.stringify(body) : undefined });
       return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
@@ -531,7 +493,9 @@ async function createWorkspaces() {
   // Ensure the service token itself is persisted for the later provisioning run.
   if (!have.has("SUPRSEND_SERVICE_TOKEN")) out.unshift("", "# Account-level service token (management API):", `SUPRSEND_SERVICE_TOKEN=${token}`);
 
-  if (out.length) {
+  if (out.length && DRY_RUN) {
+    console.log(`\n  [dry-run] would append ${out.length} line(s) to .env.local`);
+  } else if (out.length) {
     const sep = existing && !existing.endsWith("\n") ? "\n" : "";
     writeFileSync(envPath, existing + sep + out.join("\n") + "\n");
     console.log(`\n✓ Updated .env.local (existing values untouched).`);
@@ -557,7 +521,8 @@ if (doWorkspaces) {
     const c = clientFor(ws.prefix);
     const slackUrl = process.env[`${ws.prefix}_SLACK_WEBHOOK`];
 
-  if (doTenants) {
+  if (doTenants && DRY_RUN) console.log(`  [dry-run] would upsert ${ws.tenants.length + (ws.defaultBrand ? 1 : 0)} tenants`);
+  if (doTenants && !DRY_RUN) {
     for (const t of ws.tenants) {
       try {
         await c.tenants.upsert(t.id, {
@@ -587,7 +552,8 @@ if (doWorkspaces) {
     }
   }
 
-  if (doUsers) {
+  if (doUsers && DRY_RUN) console.log(`  [dry-run] would upsert ${ws.users.length} users`);
+  if (doUsers && !DRY_RUN) {
     for (const u of ws.users) {
       try {
         const edit = c.users.get_edit_instance(u.id);
@@ -609,7 +575,8 @@ if (doWorkspaces) {
     }
   }
 
-  if (doObjects) {
+  if (doObjects && DRY_RUN) console.log(`  [dry-run] would upsert ${ws.tenants.length} project objects + their subscriptions`);
+  if (doObjects && !DRY_RUN) {
     for (const t of ws.tenants) {
       try {
         await c.objects.upsert(OBJECT_TYPE, t.id, { name: t.name });
@@ -663,6 +630,7 @@ if (doWorkspaces) {
     const mgmt = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
     const hdr = { Authorization: `ServiceToken ${token}`, "Content-Type": "application/json" };
     const send = async (method, path, body) => {
+      if (DRY_RUN && method !== "GET") return dryRunSkip(method, path, body);
       const res = await fetch(`${mgmt}${path}`, { method, headers: hdr, body: body ? JSON.stringify(body) : undefined });
       return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
     };
@@ -674,7 +642,6 @@ if (doWorkspaces) {
       const subject = n.batched ? BATCHED_COMMENT.subject : n.subject;
       const inboxHeader = n.batched ? BATCHED_COMMENT.inboxHeader : n.inboxHeader;
       const name = n.batched ? BATCHED_COMMENT.name : n.name;
-      const html = n.batched ? batchedCommentHtml() : emailHtml(n);
       const inboxBody = n.batched
         ? `You have ${COMMENT_COUNT} on {{$brand.brand_name}}. Open the project to catch up.`
         : n.line;
@@ -684,19 +651,14 @@ if (doWorkspaces) {
         await send("POST", `${base}/`, {
           name, description: subject, tags: ["keystone"], enabled_channels: channels,
         });
-        // Build each channel's content ONCE, then publish it as the MASTER variant
-        // (tenant_id null) PLUS one variant per PROJECT tenant — so every project
-        // gets its own editable, brandable variant (visible in SuprSend → Variants),
-        // mirroring the multi-tenant template setup in fiix/BTS. Per-tenant {{$brand.*}}
-        // auto-injects, and admins can diverge any project's variant in the editor.
+        // Build each channel's content ONCE and publish it as the MASTER variant
+        // (tenant_id null). There are no per-tenant variants: a project's branding
+        // comes from its tenant brand at render time via {{$brand.*}}, which the
+        // designs already read, so one variant serves every project.
         const contentByChannel = {};
         if (channels.includes("email")) contentByChannel.email = {
           templating_language: "handlebars", subject,
-          // type:"raw" so the SuprSend HTML editor (dashboard + the app's embedded
-          // editor) opens WITH this content and the preview renders. "designer" with
-          // only designer.html leaves both editors blank (matches the working app
-          // path — see emailVariantContent in lib/suprsend-mgmt.ts).
-          body: { type: "raw", raw: { html, text: "" } },
+          body: { type: "designer", designer: { ...emailDesigner(slug), text: "", merge_tags: [], display_conditions: [] } },
         };
         if (channels.includes("inbox")) contentByChannel.inbox = {
           templating_language: "handlebars", schema_version: "1.0", header: inboxHeader, body: inboxBody,
@@ -706,8 +668,9 @@ if (doWorkspaces) {
         if (channels.includes("slack") && slack) contentByChannel.slack = {
           templating_language: "handlebars", body_type: "block", body_text: "", body_block: toJsonnet({ blocks: slack }),
         };
-        // variant id = tenant id (matches resolveTenantVariantId in the app); master = "default".
-        const variantTargets = [{ id: "default", tenant_id: null }, ...ws.tenants.map((t) => ({ id: t.id, tenant_id: t.id }))];
+        // Master variant only. The app's resolveTenantVariantId falls back to
+        // "default" when a tenant has no variant of its own.
+        const variantTargets = [{ id: "default", tenant_id: null }];
         for (const [channel, content] of Object.entries(contentByChannel)) {
           for (const v of variantTargets) {
             const r = await send("POST", `${base}/channel/${channel}/variant/${v.id}/`, {
@@ -746,6 +709,7 @@ if (doWorkspaces) {
     const mgmt = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
     const hdr = { Authorization: `ServiceToken ${token}`, "Content-Type": "application/json" };
     const send = async (method, path, body) => {
+      if (DRY_RUN && method !== "GET") return dryRunSkip(method, path, body);
       const res = await fetch(`${mgmt}${path}`, { method, headers: hdr, body: body ? JSON.stringify(body) : undefined });
       return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
     };
@@ -797,15 +761,16 @@ if (doWorkspaces) {
             ],
           }];
         } else if (n.slug === "comment-added") {
-          // Batch comments per project. flush_leading_item → the FIRST comment in a
-          // window is sent IMMEDIATELY (count=1), the rest accumulate and go out as one
-          // digest at window close ($batched_events). So you're alerted to the first
-          // comment right away but not spammed for a burst. (Mentions are urgent and
-          // handled separately by the immediate Tagged-on-a-Project workflow.)
+          // Digest comments. schedule_type "category_digest_schedule" makes the node
+          // read the Comment Added category's digest schedule — so the frequency a
+          // person or a project picks in Preferences (instant / hourly / daily) is what
+          // actually governs delivery. Comments accumulate into $batched_events and go
+          // out as one message per digest close. (Mentions are urgent and handled
+          // separately by the immediate Tagged-on-a-Project workflow.)
           nodes = [
-            { ref: "batch_1", name: "Batch comments per project", node_type: "batch", properties: {
-              mode: "flush_leading_item", window_type: "fixed", fixed_window: BATCH_WINDOW,
-              batch_key: ".project_id", retain_count: 10, retain_order: "first",
+            { ref: "digest_1", name: "Digest", node_type: "digest", schema_version: "1", description: null, properties: {
+              schedule_type: "category_digest_schedule", trigger_min_count: 1,
+              retain_count: 10, retain_order: "first",
             } },
             ...sendNodes,
           ];

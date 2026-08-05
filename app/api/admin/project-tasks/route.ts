@@ -51,7 +51,7 @@ export async function GET(req: Request) {
   }
 }
 
-// POST — add a task, then fire Tasks Coming Up (PHX-18702) to the assignee. The
+// POST — add a task, then fire Tasks Coming Up to the assignee. The
 // reminder is EVENT-BASED: one trigger now; the workflow's wait-until schedules the
 // send relative to due_date. No cron, and due-date changes aren't handled (by design).
 export async function POST(req: Request) {
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
 }
 
 // PATCH — change a task's status. A user may only complete their OWN task; the PM (and
-// admin overseer) may change anyone's. Completing fires Task Completed (PHX-18692) to
+// admin overseer) may change anyone's. Completing fires Task Completed to
 // the PM only — resolved from the project object's current PM subscription.
 export async function PATCH(req: Request) {
   try {

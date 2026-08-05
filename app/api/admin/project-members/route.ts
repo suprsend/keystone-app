@@ -16,12 +16,11 @@ import { safeEmail } from "@/lib/safe-email";
 
 const PM_ROLE = "Project Manager";
 
-// Fire Project Assigned (PHX-18688) when a project's PM changes — as an OBJECT trigger.
-// SuprSend fans out to the project's subscribers from the object's CURRENT state, so
-// there's no recipient resolution or previous-PM handling in the app: we only assign
-// the new PM on the object and pass the new PM's name as one delta. The template's
-// generic branch renders "A new project manager, <name>, was assigned." (Role
-// narrowing to PM + Process Owner is the preference-conditions layer.)
+// Fire Project Assigned when a project's PM changes — as an OBJECT trigger. SuprSend
+// fans out to the project's subscribers from the object's CURRENT state, so there's no
+// recipient resolution in the app: we assign the new PM on the object and pass the new
+// PM's name as one delta. The template branches on the recipient's role; narrowing to
+// PM + Process Owner is the preference-conditions layer.
 async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: string) {
   const users = await listUsers(ws);
   const newPmName = users.find((u) => u.distinctId === newPmId)?.name ?? newPmId;
@@ -42,9 +41,9 @@ async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: strin
   ).catch(() => {});
 }
 
-// EMAIL SAFETY (an incident happened — never repeat): a demo user's email is plus-
-// addressed to the one safe inbox so it can't reach real people. Policy lives in
-// lib/safe-email.ts (configurable via SAFE_TEST_EMAIL_USER / _DOMAIN).
+// EMAIL SAFETY: a demo user's email is plus-addressed to the one safe inbox so it
+// can't reach real people. Policy lives in lib/safe-email.ts (configurable via
+// SAFE_TEST_EMAIL_USER / _DOMAIN).
 
 // Project membership = subscriptions on the project OBJECT (the SuprSend source of
 // truth). Admin/PM add / remove / change-role here, and it writes straight to the

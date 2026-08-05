@@ -5,23 +5,11 @@ import { triggerWorkflow, trackEvent, triggerUsers } from "@/lib/server/hub";
 import { getWorkflowTriggerData, getWorkflow } from "@/lib/suprsend-mgmt";
 import { getUser } from "@/lib/server/users";
 import { getTenant } from "@/lib/tenants";
-import { type PersonRole } from "@/lib/people";
 import { getNotifConfig } from "@/lib/server/notif-recipients";
 import { getProjectPeople, getProjectPmName } from "@/lib/server/workspace-data";
 
 // Sentinel recipient for "send to the whole project" → role-filtered fan-out.
 const WHOLE_PROJECT = "__project__";
-
-// Per-recipient relationship type — drives the {{recipient_type}} conditional copy
-// (e.g. Project Assigned). A role-based tester can't know "previous PM", so the PM
-// maps to new_pm; the rest map by role. Templates ignore it where not used.
-const ROLE_TO_TYPE: Record<string, string> = {
-  "Project Manager": "new_pm",
-  "Process Owner": "process_owner",
-  "Project Sponsor": "project_sponsor",
-  "Team Member": "team_member",
-};
-const typeForRole = (role?: string | null) => ROLE_TO_TYPE[(role ?? "") as PersonRole] ?? "";
 
 // Send a test: resolve the recipient from the LIVE SuprSend roster (the Users tab),
 // then trigger the workflow. Or send to the whole project (object fan-out).
@@ -61,9 +49,9 @@ export async function POST(req: Request) {
       const payload = { ...base, new_pm_name: pmName, ...(data ?? {}) };
       if (isEvent && eventName) {
         // Event workflow → track the event for each target so SuprSend runs it.
-        // Personalize per recipient: name/role AND recipient_type (so per-recipient
-        // conditional copy renders, not the sample's). Greeting uses $recipient.name.
-        await Promise.all(targets.map((t) => trackEvent(ws, t.id, eventName, { ...payload, employee_name: t.name, role: t.role, recipient_type: typeForRole(t.role) }, tenant)));
+        // Personalize per recipient with their name and per-project role, so the
+        // role-keyed copy renders per reader. Greeting uses $recipient.name.
+        await Promise.all(targets.map((t) => trackEvent(ws, t.id, eventName, { ...payload, employee_name: t.name, role: t.role }, tenant)));
       } else {
         await triggerUsers(ws, workflow_slug, targets.map((t) => t.id), payload, tenant);
       }
@@ -80,14 +68,12 @@ export async function POST(req: Request) {
     }
 
     // Single recipient. Build a complete payload (workflow sample data + employee
-    // name/role + recipient_type + new_pm_name so the conditional templates render) —
-    // caller-provided data still wins (explicit test values), so the prefilled sample's
-    // recipient_type drives the preview. Greeting comes from $recipient.name.
+    // name/role + new_pm_name so the role-keyed templates render) — caller-provided
+    // data still wins (explicit test values). Greeting comes from $recipient.name.
     const payload = {
       ...base,
       employee_name: emp.name,
       role: emp.role ?? "",
-      recipient_type: typeForRole(emp.role),
       new_pm_name: getProjectPmName(tenant),
       ...(data ?? {}),
     };

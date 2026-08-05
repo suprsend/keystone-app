@@ -30,8 +30,8 @@ export async function GET(req: Request) {
 }
 
 // POST — add a comment. Tagged and Comment Added are MUTUALLY EXCLUSIVE:
-//  • with an @mention → Tagged on a Project (PHX-18695), to the mentioned person only.
-//  • plain comment    → Comment Added (PHX-18701), to the project's TEAM MEMBERS (by
+//  • with an @mention → Tagged on a Project, to the mentioned person only.
+//  • plain comment    → Comment Added, to the project's TEAM MEMBERS (by
 //    role), excluding the author. (Not PM / sponsor / process owner.)
 export async function POST(req: Request) {
   try {
@@ -68,18 +68,17 @@ export async function POST(req: Request) {
     // names — not a role filter). No Comment Added in that case.
     if (mentionId) {
       const except = await exceptOf("tagged-on-a-project");
-      await triggerWorkflow(ws, "tagged-on-project", mentionId, { ...payload, except }, tenant, actor).catch(() => {});
+      await triggerWorkflow(ws, "tagged-on-project", mentionId, { ...payload, except }, tenant).catch(() => {});
       return NextResponse.json({ ok: true, comment, tagged: true });
     }
 
     // Plain comment → fire Comment Added on the project OBJECT. SuprSend fans out to
-    // the subscribers; WHO actually gets it (PM + team, skip the author) is decided by
-    // the workflow's conditions — NOT resolved here. We pass `actor` (the commenter)
-    // so a self-action condition can skip them; role/except already filter the rest.
+    // the subscribers; WHO actually gets it is decided by the workflow's role and
+    // except conditions — NOT resolved here.
     const except = await exceptOf("comment-added");
     await triggerObjectWorkflow(
       ws,
-      { workflow: "comment-added", objectType: "project", objectId: tenant, data: { ...payload, except }, actor },
+      { workflow: "comment-added", objectType: "project", objectId: tenant, data: { ...payload, except } },
       tenant,
     ).catch(() => {});
     return NextResponse.json({ ok: true, comment });

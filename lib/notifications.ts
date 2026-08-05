@@ -27,8 +27,6 @@ export type NotifGroup = "Assignments" | "Project status" | "Tasks" | "Collabora
 
 export interface NotificationDef {
   id: string;
-  /** Ticket reference from the PRD (shown in detail for traceability). */
-  ref: string;
   name: string;
   /** Plain-English "when it fires" — shown to admins and subscribers. */
   description: string;
@@ -44,14 +42,13 @@ export interface NotificationDef {
   isDefault: boolean;
 }
 
-// ── The seven system defaults from the PRD ───────────────────────────────────
+// ── The eight system notification defaults ───────────────────────────────────
 const DEFAULTS: NotificationDef[] = [
-  // NOTE: live template renders PER-RECIPIENT copy keyed on `recipient_type`
-  // (new_pm / previous_pm / process_owner) — see scripts/provision.mjs. The body
-  // below is just the static catalog preview.
+  // NOTE: the live template renders per-recipient copy keyed on the reader's
+  // per-project role — see scripts/provision.mjs. The body below is just the
+  // static catalog preview.
   {
     id: "project-assigned",
-    ref: "PHX-18688",
     name: "Project Assigned",
     description: "When a project manager is assigned to a project, or replaced by a different manager.",
     group: "Assignments",
@@ -65,7 +62,6 @@ const DEFAULTS: NotificationDef[] = [
   },
   {
     id: "project-started",
-    ref: "PHX-18696",
     name: "Project Started",
     description: "When a project's status is set to In-flight.",
     group: "Project status",
@@ -79,7 +75,6 @@ const DEFAULTS: NotificationDef[] = [
   },
   {
     id: "project-paused",
-    ref: "PHX-18698",
     name: "Project Paused",
     description: "When a project is paused.",
     group: "Project status",
@@ -93,7 +88,6 @@ const DEFAULTS: NotificationDef[] = [
   },
   {
     id: "task-completed",
-    ref: "PHX-18692",
     name: "Task Completed",
     description: "When a task on a project is marked complete.",
     group: "Tasks",
@@ -107,7 +101,6 @@ const DEFAULTS: NotificationDef[] = [
   },
   {
     id: "task-upcoming",
-    ref: "PHX-18702",
     name: "Tasks Coming Up",
     description: "When a task assigned to you is approaching its due date.",
     group: "Tasks",
@@ -121,7 +114,6 @@ const DEFAULTS: NotificationDef[] = [
   },
   {
     id: "comment-added",
-    ref: "PHX-18701",
     name: "Comment Added",
     description: "When a comment is added to a project you're on.",
     group: "Collaboration",
@@ -135,7 +127,6 @@ const DEFAULTS: NotificationDef[] = [
   },
   {
     id: "tagged-on-project",
-    ref: "PHX-18695",
     name: "Tagged on a Project",
     description: "When someone @mentions you on a project.",
     group: "Collaboration",
@@ -155,7 +146,6 @@ const CUSTOM: Record<WorkspaceSlug, NotificationDef[]> = {
   "acme": [
     {
       id: "weekly-portfolio-digest",
-      ref: "Custom",
       name: "Weekly Portfolio Digest",
       description: "Every Monday, a summary of stage-gate movement across the portfolio.",
       group: "Project status",
@@ -171,7 +161,6 @@ const CUSTOM: Record<WorkspaceSlug, NotificationDef[]> = {
   "globex": [
     {
       id: "gate-review-reminder",
-      ref: "Custom",
       name: "Gate Review Reminder",
       description: "Three days before a scheduled gate review, remind the project team.",
       group: "Tasks",

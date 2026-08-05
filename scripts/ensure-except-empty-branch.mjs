@@ -1,24 +1,22 @@
 // Make the per-category "Except" control work when the except list is EMPTY.
 //
-// THE BUG: every workflow gates delivery with a block like
+// Every workflow gates delivery with a block like
 //   AND[ role CONTAINS …, (cost > …), except NOT_CONTAINS $recipient.distinct_id ]
-// `NOT_CONTAINS` does NOT evaluate true against an empty/unset except list — it fails,
-// the whole AND fails, and NOBODY passes → no notification whenever except is empty
-// (the common default). (The earlier assumption that "NOT_CONTAINS is true for an empty
-// list" was wrong.)
+// `NOT_CONTAINS` does not evaluate true against an empty or unset except list — it
+// fails, so the whole AND fails and nobody passes. With except empty (the common
+// default) that means no notification at all.
 //
-// THE FIX (proven on budget-alert): for every block that carries `except NOT_CONTAINS`,
-// add a SIBLING OR-block identical to it but with that one arg swapped to `except EMPTY`.
-// Top-level blocks are OR'd, so a recipient now passes if
+// The fix: for every block carrying `except NOT_CONTAINS`, add a SIBLING OR-block
+// identical to it but with that one arg swapped to `except EMPTY`. Top-level blocks
+// are OR'd, so a recipient passes if
 //   (role/cost gates AND except NOT_CONTAINS them)  OR  (same gates AND except EMPTY).
-// Populated except → first branch suppresses; empty except → second branch delivers.
+// Populated except → the first branch suppresses; empty except → the second delivers.
 //
-// Idempotent: a workflow that already has any `except EMPTY` arg is left untouched.
-// Workflow change only — no app change. Mirrors ensure-include-except-conditions.mjs.
+// Idempotent: a workflow that already has an `except EMPTY` arg is left untouched.
+// Workflow change only — no app change.
 //
-//   node --env-file=.env.local       scripts/ensure-except-empty-branch.mjs all
-//   node --env-file=.env.prod.backup scripts/ensure-except-empty-branch.mjs all
-//   APPLY=1 node --env-file=.env.prod.backup scripts/ensure-except-empty-branch.mjs all
+//   node --env-file=.env.local scripts/ensure-except-empty-branch.mjs all
+//   APPLY=1 node --env-file=.env.local scripts/ensure-except-empty-branch.mjs all
 //   (arg: acme | globex | all — default all; dry run unless APPLY=1)
 
 const MGMNT = (process.env.SUPRSEND_MGMNT_URL || "https://management-api.suprsend.com").replace(/\/$/, "");
