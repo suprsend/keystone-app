@@ -27,7 +27,8 @@ import { useCollapsibleSections, SectionHeaderRow, ChannelHeaderIcons } from "@/
 //  • Recipients  — which roles the notification targets (live workflow recip: tags;
 //    per-notification / workspace-wide — same config the project view shows).
 //  • Channel     — the default channels.
-//  • Conditions  — preference conditions (in development — placeholder).
+//  • Conditions  — extra gates the workflow evaluates on top of role, e.g. the cost
+//    threshold Budget Alert must exceed before it sends.
 interface Row extends PrefCategory {
   channels: string[]; // unified default-channel set (routed by preference on save)
 }

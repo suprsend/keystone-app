@@ -27,7 +27,8 @@ import { cn } from "@/lib/utils";
 //    from the workspace by default; change it here to override for this project.
 //  • Recipients — which roles receive it (live `recip:` tags on the workflow).
 //  • Channel    — which channels this project delivers on.
-//  • Conditions — preference conditions (in development — placeholder for now).
+//  • Conditions — extra gates the workflow evaluates on top of role, e.g. the cost
+//    threshold Budget Alert must exceed before it sends.
 
 interface Row {
   category: string;

@@ -6,13 +6,11 @@ import { Plus, Users, Shield } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Workspace-level people directory. Distinct id / name / email come from the live
-// SuprSend roster (project members ∪ everyone else in the workspace); "Projects" is
-// how many project objects each person is subscribed to. Read-only for now — the
-// "Add User" action is UI-only until it's wired.
+// Workspace-level people directory, read-only. Distinct id / name / email come from
+// the live SuprSend roster (project members ∪ everyone else in the workspace);
+// "Projects" is how many project objects each person is subscribed to.
 interface PoolUser {
   distinctId: string;
   name: string;

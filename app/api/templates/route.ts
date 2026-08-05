@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, isSlug, INVALID_SLUG } from "@/lib/server/http";
 import { getActiveWorkspace } from "@/lib/server/workspace";
 import { listTemplates, deleteTemplate, getTemplateDraft } from "@/lib/suprsend-mgmt";
 
@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     const ws = await getActiveWorkspace();
     const slug = new URL(req.url).searchParams.get("slug");
     if (slug) {
+      if (!isSlug(slug)) return NextResponse.json({ ok: false, error: INVALID_SLUG }, { status: 400 });
       const template = await getTemplateDraft(ws.slug, slug);
       if (!template) return NextResponse.json({ ok: false, error: "Template not found." }, { status: 404 });
       return NextResponse.json({ ok: true, template });
@@ -26,6 +27,7 @@ export async function DELETE(req: Request) {
     const ws = await getActiveWorkspace();
     const slug = new URL(req.url).searchParams.get("slug");
     if (!slug) return NextResponse.json({ ok: false, error: "slug required" }, { status: 400 });
+    if (!isSlug(slug)) return NextResponse.json({ ok: false, error: INVALID_SLUG }, { status: 400 });
     const result = await deleteTemplate(ws.slug, slug);
     return NextResponse.json({ ok: result.ok, status: result.status });
   } catch (e) {
