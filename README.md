@@ -27,19 +27,15 @@ This README has three parts. Read them in order:
 
 ## Getting started
 
-> **⚠️ Run this locally. It has no authentication.**
+> **Note — there's no login.** Keystone is a reference app, so it skips auth entirely and treats
+> whoever opens it as an admin. Running it locally is the intended path; deploying it (Vercel or
+> anywhere else) to share a demo works fine too — just keep in mind that anyone with the URL gets in.
 >
-> Keystone is a reference app: it ships with no login, and anyone who can reach it is treated as an
-> admin. Two routes mint SuprSend tokens for whoever asks —
-> [`/api/subscriber-token`](app/api/subscriber-token/route.ts) issues a subscriber token for any
-> `distinct_id` passed in the query string, and [`/api/editor-token`](app/api/editor-token/route.ts)
-> issues a template-editor token scoped to `entity_id: "*"` (every template in the workspace).
->
-> That's fine on `localhost`. If you deploy it anywhere reachable, put it behind your own auth first.
-> And when you copy these patterns into your own product:
->
-> - Derive `distinct_id` from your authenticated server-side session — **never** from client input.
-> - Gate the editor-token route to admins, and scope `entity_id` to specific templates.
+> Two spots to revisit when you take these patterns into your own product:
+> [`/api/subscriber-token`](app/api/subscriber-token/route.ts) reads `distinct_id` from the query
+> string — take it from your authenticated session instead — and
+> [`/api/editor-token`](app/api/editor-token/route.ts) uses `entity_id: "*"`, which covers every
+> template; scope it to the ones you mean and gate the route to admins.
 
 **Prerequisites:** Node.js 20+ and a SuprSend account.
 
