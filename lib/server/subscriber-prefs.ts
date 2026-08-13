@@ -35,11 +35,25 @@ export interface UserCategoryChannel {
   preference: "opt_in" | "opt_out";
   is_editable?: boolean;
 }
+/** One condition attribute on a category, as the subscriber API returns it.
+ *  `value` is THIS user's override — null means they inherit the project's (or the
+ *  workspace's) value, which is what `default_value` carries. */
+export interface UserCategoryProperty {
+  key: string;
+  label: string;
+  value_type: string;
+  value: unknown;
+  default_value: unknown;
+  edit_policy?: "editable" | "locked";
+}
+
 export interface UserCategory {
   category: string;
   name: string;
   description?: string | null;
   preference: "opt_in" | "opt_out" | "cant_unsubscribe";
+  /** Condition attributes (role / except / include / cost) with this user's overrides. */
+  properties?: UserCategoryProperty[] | null;
   // null = the user never set this → they inherit the workspace default.
   // non-null = the user actively chose this preference themselves.
   original_preference?: "opt_in" | "opt_out" | "cant_unsubscribe" | null;
@@ -90,5 +104,43 @@ export async function updateUserCategory(
       body: JSON.stringify({ category, preference, opt_out_channels: optOutChannels, is_editable: true }),
     },
   );
+  return { ok: res.ok, status: res.status };
+}
+
+/**
+ * Override ONE condition attribute for this user on a category — the user-level twin
+ * of saveTenantConditions. Sending `null` clears the override so the user goes back
+ * to inheriting the project's value.
+ *
+ * Other attributes the user has already overridden are read back and re-sent, because
+ * the PATCH replaces the whole `properties` array (same contract as the tenant route).
+ */
+export async function saveUserCondition(
+  ws: Workspace,
+  distinctId: string,
+  category: string,
+  tenantId: string,
+  key: string,
+  value: unknown,
+): Promise<{ ok: boolean; status: number }> {
+  if (!hasWorkspaceKeys(ws)) return { ok: true, status: 200 };
+  const current = await getUserCategories(ws, distinctId, tenantId);
+  const cat = current.find((c) => c.category === category);
+  const preserved = (cat?.properties ?? [])
+    .filter((p) => p.key !== key && p.value !== null && p.value !== undefined)
+    .map((p) => ({ key: p.key, value: p.value }));
+  const properties = value === null ? preserved : [...preserved, { key, value }];
+  const url = `${HOST}/v2/subscriber/${encodeURIComponent(distinctId)}/category/${encodeURIComponent(category)}/?tenant_id=${encodeURIComponent(tenantId)}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: headers(ws, distinctId, tenantId),
+    // `preference` is required on this endpoint even when only properties change —
+    // resend the user's current on/off so the write doesn't flip it.
+    body: JSON.stringify({
+      category,
+      preference: cat?.preference === "opt_out" ? "opt_out" : "opt_in",
+      properties,
+    }),
+  });
   return { ok: res.ok, status: res.status };
 }

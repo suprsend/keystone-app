@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { errMsg } from "@/lib/server/http";
 import { getActiveTenant, getActiveWorkspace } from "@/lib/server/workspace";
 import { getUser } from "@/lib/server/users";
-import { getUserCategories, updateUserCategory } from "@/lib/server/subscriber-prefs";
+import { getUserCategories, updateUserCategory, saveUserCondition } from "@/lib/server/subscriber-prefs";
 
 // The "viewing as" employee's OWN preferences. Synchronous hub PATCH (no client
 // debounce) so a toggle persists even on immediate navigation. The actor is a
@@ -58,3 +58,22 @@ export async function POST(req: Request) {
   }
 }
 
+// PATCH — override ONE condition attribute for this user (e.g. the Budget Alert cost
+// threshold). `value: null` clears the override so they inherit the project's value
+// again. Preference on/off and channels ride on POST above.
+export async function PATCH(req: Request) {
+  try {
+    const ws = await getActiveWorkspace();
+    const { distinct_id, category, key, value, scope, tenant } = await req.json();
+    if (!(await valid(ws, distinct_id))) {
+      return NextResponse.json({ ok: false, error: "Unknown employee for this tenant." }, { status: 400 });
+    }
+    if (!category || typeof key !== "string" || !key) {
+      return NextResponse.json({ ok: false, error: "category + key required" }, { status: 400 });
+    }
+    const result = await saveUserCondition(ws, distinct_id, category, await scopeTenant(scope, tenant), key, value ?? null);
+    return NextResponse.json({ ok: result.ok, status: result.status });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: errMsg(e) }, { status: 500 });
+  }
+}
