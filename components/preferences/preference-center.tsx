@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHANNEL_ICON, CHANNEL_LABEL } from "@/lib/message-display";
+import { ConditionsCell, type Condition } from "@/components/admin/conditions-cell";
 import { DigestFrequency, DigestPill, type DigestChoice, type DigestOption, resolveDigestChoice, digestSummary } from "@/components/preferences/digest-frequency";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +103,36 @@ export function PreferenceCenter({
     }
   }
 
+  // Save ONE condition override for this user (e.g. their own Budget Alert cost
+  // threshold). Optimistic locally, then PATCHed; reverted by a reload on failure.
+  async function saveCondition(category: string, next: Condition[]) {
+    if (!distinctId || distinctId === "admin") return;
+    const metric = next[0];
+    if (!metric) return;
+    setCategories((cur) =>
+      (cur ?? []).map((c) =>
+        c.category === category
+          ? { ...c, properties: (c.properties ?? []).map((p) => (p.key === metric.key ? { ...p, value: metric.value } : p)) }
+          : c,
+      ),
+    );
+    try {
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ distinct_id: distinctId, category, key: metric.key, value: metric.value, scope, tenant: tenantId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.ok) {
+        toast.error("Couldn’t save condition", { description: data.error });
+        reload();
+      }
+    } catch {
+      toast.error("Couldn’t save condition");
+      reload();
+    }
+  }
+
   // Synchronous, awaited write — fires immediately on toggle (no debounce). The
   // optimistic local state is reverted only if the server rejects it.
   async function persist(category: string, preference: "opt_in" | "opt_out", outChannels: string[]) {
@@ -172,10 +203,11 @@ export function PreferenceCenter({
     <div className="max-h-[calc(100vh-13rem)] overflow-auto rounded-lg border border-border bg-card">
       <table className="w-full table-fixed text-sm">
         <colgroup>
-          <col className="w-[42%]" />
-          <col className="w-[13%]" />
-          <col className="w-[20%]" />
-          <col className="w-[25%]" />
+          <col className="w-[34%]" />
+          <col className="w-[12%]" />
+          <col className="w-[18%]" />
+          <col className="w-[22%]" />
+          <col className="w-[14%]" />
         </colgroup>
         <thead className="sticky top-0 z-10">
           <tr className="border-b border-border bg-muted text-left text-xs text-muted-foreground">
@@ -198,6 +230,12 @@ export function PreferenceCenter({
                 })}
               </div>
             </th>
+            <th className="px-4 py-2 font-medium">
+              <HeaderTip
+                label="Conditions"
+                tip="Extra rules this notification checks before sending — e.g. only alert you once a project's cost passes your own threshold. Blank means you use the project's."
+              />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -207,7 +245,7 @@ export function PreferenceCenter({
               <React.Fragment key={group.section}>
                 <SectionHeaderRow
                   label={group.section}
-                  colSpan={4}
+                  colSpan={5}
                   collapsed={collapsed}
                   onToggle={() => toggleSection(group.section)}
                 />
@@ -220,6 +258,7 @@ export function PreferenceCenter({
                       onDigestChange={(choice) => saveDigest(cat.category, choice)}
                       onToggleCategory={() => toggleCategory(cat)}
                       onToggleChannel={(ch) => toggleChannel(cat, ch)}
+                      onConditionChange={(next) => saveCondition(cat.category, next)}
                     />
                   ))}
               </React.Fragment>
@@ -237,12 +276,14 @@ function CategoryRow({
   onDigestChange,
   onToggleCategory,
   onToggleChannel,
+  onConditionChange,
 }: {
   cat: UserCategory;
   digest?: { schedule: DigestOption[]; choice: DigestChoice };
   onDigestChange: (choice: DigestChoice) => void;
   onToggleCategory: () => void;
   onToggleChannel: (ch: UserCategoryChannel) => void;
+  onConditionChange: (next: Condition[]) => void;
 }) {
   // A mandatory (cant_unsubscribe) category comes back from SuprSend as
   // preference:"opt_in" + is_editable:false — the lock is is_editable, NOT the
@@ -316,6 +357,30 @@ function CategoryRow({
           })}
         </div>
       </td>
+      <td className="px-4 py-3 align-top">
+        {/* The user's own condition overrides. A blank value means they inherit the
+            project's — the cell shows the inherited number as the starting point. */}
+        <ConditionsCell
+          conditions={userConditions(cat)}
+          editable={categoryOn && !locked}
+          canAuthor={false}
+          onChange={(next) => onConditionChange(next)}
+        />
+      </td>
     </tr>
   );
+}
+
+/** Map the category's condition attributes to what ConditionsCell renders. Only the
+ *  numeric metrics are shown to a user — role / except / always-notify decide who is
+ *  notified at all, which is the admin's call, not the individual's. */
+function userConditions(cat: UserCategory): Condition[] {
+  return (cat.properties ?? [])
+    .filter((p) => p.value_type === "integer")
+    .map((p) => ({
+      key: p.key,
+      label: p.label,
+      value: Number(p.value ?? p.default_value ?? 0),
+      editable: p.edit_policy !== "locked",
+    }));
 }
