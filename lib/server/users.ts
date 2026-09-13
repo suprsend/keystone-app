@@ -3,7 +3,7 @@
 // Role + name live in user `properties`; email is the `$email` channel.
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
-import { suprsendClient as client, hasWorkspaceKeys, getActiveTenant } from "@/lib/server/workspace";
+import { suprsendClient as client, hasWorkspaceKeys } from "@/lib/server/workspace";
 
 // Event emitted when a new employee is added. An event-triggered workflow
 // (`event-employee-onboarding`, trigger_type:"event") listens for it and fires
@@ -285,33 +285,4 @@ export async function getProjectSubscribers(ws: Workspace, projectId: string): P
   } catch {
     return {};
   }
-}
-
-// What an employee is subscribed to: team objects + subscriber lists. Surfaced in
-// the Users tab so the object/list (subscription) model is visible in the app.
-export interface UserSubscriptions {
-  teams: { id: string; type: string; name: string }[];
-  lists: { id: string; name: string }[];
-}
-
-export async function getUserSubscriptions(ws: Workspace, distinctId: string): Promise<UserSubscriptions> {
-  if (!hasWorkspaceKeys(ws)) return { teams: [], lists: [] };
-  const c = client(ws);
-  type ObjRes = { results?: { object?: { id?: string; object_type?: string; properties?: { name?: string } } }[] };
-  type ListRes = { results?: { list?: { list_id?: string; list_name?: string } }[] };
-  const [objs, lists] = await Promise.all([
-    c.users.get_objects_subscribed_to(distinctId).catch(() => ({ results: [] }) as ObjRes) as Promise<ObjRes>,
-    c.users.get_lists_subscribed_to(distinctId).catch(() => ({ results: [] }) as ListRes) as Promise<ListRes>,
-  ]);
-  return {
-    teams: (objs.results ?? []).map((r) => ({
-      id: r.object?.id ?? "",
-      type: r.object?.object_type ?? "team",
-      name: r.object?.properties?.name ?? r.object?.id ?? "",
-    })).filter((t) => t.id),
-    lists: (lists.results ?? []).map((r) => ({
-      id: r.list?.list_id ?? "",
-      name: r.list?.list_name ?? r.list?.list_id ?? "",
-    })).filter((l) => l.id),
-  };
 }

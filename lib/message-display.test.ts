@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   activityBadge,
   runStatusBadge,
-  computeAnalytics,
   humanizeNode,
   fmtDuration,
   timeAgo,
@@ -61,23 +60,6 @@ describe("runStatusBadge", () => {
     expect(runStatusBadge("partial").label).toBe("Partial failure");
     expect(runStatusBadge("failed").label).toBe("Failed");
     expect(runStatusBadge("in_progress").label).toBe("In progress");
-  });
-});
-
-describe("computeAnalytics", () => {
-  it("counts the funnel by timestamp presence and breaks down by channel/template/workflow", () => {
-    const records = [
-      msg({ channel: "email", templateName: "Welcome", workflowSlug: "wf1", workflowName: "Onboarding", deliveredAt: "x", seenAt: "y" }),
-      msg({ channel: "email", templateName: "Welcome", workflowSlug: "wf1", workflowName: "Onboarding", deliveredAt: "x" }),
-      msg({ channel: "inbox", templateName: "Alert", workflowSlug: "wf2", workflowName: "Security", failed: true }),
-    ];
-    const a = computeAnalytics(records);
-    expect(a.overall).toEqual({ sent: 3, delivered: 2, opened: 1, failed: 1 });
-    // sorted by volume — email (2) before inbox (1)
-    expect(a.byChannel.map((b) => b.label)).toEqual(["email", "inbox"]);
-    expect(a.byChannel[0]).toMatchObject({ sent: 2, delivered: 2, opened: 1 });
-    expect(a.byTemplate.map((b) => b.label)).toEqual(["Welcome", "Alert"]);
-    expect(a.byWorkflow[0]).toMatchObject({ label: "Onboarding", slug: "wf1", sent: 2 });
   });
 });
 

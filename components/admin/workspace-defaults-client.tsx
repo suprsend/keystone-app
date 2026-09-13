@@ -2,13 +2,12 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { SlidersHorizontal, Plus } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import type { PrefCategory, Pref } from "@/lib/server/preference-config";
 import type { PersonRole } from "@/lib/people";
 import { useAppState } from "@/components/providers";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecipientCell, type Recipients } from "@/components/admin/recipient-cell";

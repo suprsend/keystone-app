@@ -4,7 +4,6 @@
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client, hasWorkspaceKeys } from "@/lib/server/workspace";
-import type { TenantId } from "@/lib/tenants";
 
 // The social links we surface for editing (the tenant stores more keys; we merge
 // onto the full set on save so untouched ones are preserved).

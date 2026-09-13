@@ -1,13 +1,11 @@
 // SuprSend message data (hub.suprsend.com /v1/message/, node SDK only).
-// One fetch, shaped two ways:
+// One fetch, shaped for the Logs screen:
 //   • Executions — messages grouped by idempotency_key (one trigger = one run).
-//   • Analytics  — funnel counts (sent → delivered → opened, plus failed).
 // Each message carries idempotency_key, execution_id, status, channel,
 // per-stage timestamps, and nested workflow/template objects.
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
-import { suprsendClient as client, hasWorkspaceKeys, getActiveTenant } from "@/lib/server/workspace";
-import type { TenantId } from "@/lib/tenants";
+import { suprsendClient as client, hasWorkspaceKeys } from "@/lib/server/workspace";
 
 // ───────────────────────── Normalized record ─────────────────────────
 
