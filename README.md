@@ -88,15 +88,18 @@ cp .env.example .env.local
 node --env-file=.env.local scripts/seed.mjs workspaces
 ```
 
-It creates both workspaces (or adopts them if they already exist — safe to re-run) and appends a
-labelled placeholder to `.env.local` for each credential the next step fills in. (Prefer clicking?
-Create them in the dashboard with **Add workspace** instead; the placeholders still get written the
-next time you run the command.)
+It creates both workspaces (or adopts them if they already exist — safe to re-run), **auto-fills each
+workspace's Workspace Key** (it equals the workspace UID the API returns), and appends a labelled
+placeholder to `.env.local` for each remaining credential the next step fills in. (Prefer clicking?
+Create them in the dashboard with **Add workspace** instead; the key fill and placeholders still get
+written the next time you run the command.)
 
-> **Why every credential is pasted (no auto-creation):** SuprSend's Management API can create the keys,
-> but the values it returns don't map 1:1 to what the app needs — the REST "API Key" is *not* the SDK's
-> Workspace Key + Secret, and a signing key's `id` (`ws_signk_…`) is *not* the editor JWT's `kid`, which
-> must be the UID (`signing_key_…`). Copying the exact dashboard values sidesteps all of those pitfalls.
+> **Why the other four credentials are pasted (no auto-creation):** SuprSend shows the workspace
+> secret and the signing-key Base64 exactly **once** in the dashboard and no API returns them; the
+> public key and signing-key UID live only in the dashboard's key sections. And the near-misses are
+> real: the REST "API Key" is *not* the SDK's Workspace Key + Secret, and a signing key's `id`
+> (`ws_signk_…`) is *not* the editor JWT's `kid`, which must be the UID (`signing_key_…`). Copying the
+> exact dashboard values sidesteps all of those pitfalls.
 
 **3. Add the workspace credentials**
 
@@ -168,7 +171,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | Variable | Where to find it |
 |---|---|
 | `SUPRSEND_SERVICE_TOKEN` | Account Settings → Service Tokens |
-| `SUPRSEND_<WS>_WORKSPACE_KEY` / `_SECRET` | Workspace → Developers → API Keys → **Workspace Key and Secret** |
+| `SUPRSEND_<WS>_WORKSPACE_KEY` | Auto-filled by the bootstrap (= the workspace UID); also under Workspace → Developers → API Keys → **Workspace Key and Secret** |
+| `SUPRSEND_<WS>_WORKSPACE_SECRET` | Workspace → Developers → API Keys → **Workspace Key and Secret** (shown once) |
 | `NEXT_PUBLIC_SUPRSEND_<WS>_PUBLIC_KEY` | → **Public Keys** (the `SS.PUBK…` value) |
 | `SUPRSEND_<WS>_SIGNING_KEY_UID` | → **Signing Keys** → the `signing_key_…` **UID** (not the `ws_signk_…` ID) |
 | `SUPRSEND_<WS>_SIGNING_KEY_B64` | → **Signing Keys** → Generate → the Base64 |
