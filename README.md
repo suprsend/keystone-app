@@ -25,6 +25,35 @@ This README has three parts. Read them in order:
 
 ---
 
+## Source of truth: your SuprSend account, not this repo
+
+The one thing to understand before anything else:
+
+- **The app renders whatever is in your SuprSend account.** Every screen fetches live — templates,
+  workflows' recipient tags, preference categories, brand, logs, projects, people. Nothing in the repo
+  filters or overrides what your account returns. Create a brand-new workflow + template in the SuprSend
+  dashboard and it appears in the app with no code change.
+- **`suprsend/` is a reference starter kit, not ground truth.** It holds the demo's preference
+  categories, templates, and workflows as plain files, in the exact on-disk layout
+  [SuprSend's CLI](https://docs.suprsend.com/reference/cli-intro) defines. Read the folder to see what
+  the demo ships; push it with the CLI if you want it; ignore it or replace it from the dashboard if you
+  don't. The app behaves the same either way.
+- **`scripts/seed.mjs` exists only for what the CLI can't create** — the demo *data*: tenants
+  (projects), users (the roster), and project objects with role subscriptions. Those are data-plane
+  entities with no CLI commands (SDK/API only), which is why they're a script and the assets aren't.
+- **If you edit in the SuprSend dashboard**, the dashboard version is what the app shows, immediately.
+  To bring those edits back into files, run `npx suprsend template pull -w <workspace>` (same for
+  `workflow` / `category`). To reset the account to the repo's version, re-push — knowing that a
+  template re-push **overwrites** dashboard edits, while a workflow re-push is safe by design (the files
+  hold static structure; every value a human tunes lives on the preference category, which workflow
+  conditions only read).
+
+The only repo-side registry left is `lib/notifications.ts` — a static catalog used as a **fallback when
+a workspace has no API keys** (so screens render something instead of nothing) plus two slug-mapping
+helpers. With keys present it never overrides live data.
+
+---
+
 ## Getting started
 
 > **Note — there's no login.** Keystone is a reference app, so it skips auth entirely and treats
@@ -106,7 +135,7 @@ or `objects`. The CLI has no commands for these data-plane entities, which is wh
 > addresses are also plus-addressed onto a single inbox that never delivers by default — see
 > `SAFE_TEST_EMAIL_USER` / `_DOMAIN` in `.env.example`.
 
-**4. Run**
+**5. Run**
 
 ```bash
 npm run dev
@@ -375,13 +404,16 @@ Open to the project's members (and Admin). What you can *do* depends on your rol
 ## Repository layout
 
 ```
-app/admin     Administer surfaces (templates, preferences, brand, logs)
-app/project   Manage surfaces (projects list + project detail)
-app/workspace resource pool
-app/api       route handlers — where every secret-bearing SuprSend call is made
-lib/server    server-only SuprSend access (Node SDK + Management API + signed Hub REST)
-lib           registries: workspaces (customers), tenants (projects), people, notifications
+app/admin      Administer surfaces (templates, preferences, brand, logs)
+app/project    Manage surfaces (projects list + project detail)
+app/workspace  resource pool
+app/api        route handlers — where every secret-bearing SuprSend call is made
+lib/server     server-only SuprSend access (Node SDK + Management API + signed Hub REST)
+lib            registries: workspaces (customers), tenants (projects), people, notifications
 components     UI, grouped by surface
+suprsend/      the reference asset kit — preference categories, templates, workflows,
+               in the SuprSend CLI's file layout (see "Source of truth" above)
+scripts/       seed.mjs (demo data: tenants/users/objects) · push-assets.mjs (CLI wrapper)
 ```
 
 ## Scripts
@@ -391,8 +423,7 @@ components     UI, grouped by surface
 | `npm run dev` | Dev server (`-- -p 3200` for the demo port) |
 | `npm run build` / `start` | Production build / run |
 | `npm run lint` / `typecheck` / `test` | ESLint / `tsc --noEmit` / Vitest |
-
-| `npm run push:assets` | Push the `suprsend/` assets (categories, templates, workflows) via the SuprSend CLI |
+| `npm run push:assets` | Push the `suprsend/` assets (categories, templates, workflows) via the SuprSend CLI — add `-- --dry-run` to preview, `-- --draft` to stage without committing |
 | `npm run seed` | Seed the demo data (tenants, users, objects + subscriptions) |
 
 ## License
