@@ -50,7 +50,7 @@ export function ProjectOverview({ id }: { id: string }) {
   const canManage = actorRole === "Admin" || actorRole === "Project Manager";
   return (
     <div className="space-y-6">
-      <CommentsPanel tenant={id} actorId={actorId} canComment />
+      <CommentsPanel tenant={id} actorId={actorId} />
       <TasksPanel tenant={id} actorId={actorId} canManage={canManage} />
     </div>
   );
@@ -176,7 +176,7 @@ export function ProjectCostField({ tenant, canManage }: { tenant: string; canMan
 
 /* ── Comments — LinkedIn-style thread, stored on the object. Typing "@" opens a
    person picker; a comment with a mention fires Tagged (not Comment Added). ── */
-function CommentsPanel({ tenant, actorId, canComment }: { tenant: string; actorId: string; canComment: boolean }) {
+function CommentsPanel({ tenant, actorId }: { tenant: string; actorId: string }) {
   const [comments, setComments] = React.useState<Comment[] | null>(null);
   const [names, setNames] = React.useState<Record<string, string>>({});
   const [members, setMembers] = React.useState<{ distinctId: string; name: string }[]>([]);
@@ -257,44 +257,42 @@ function CommentsPanel({ tenant, actorId, canComment }: { tenant: string; actorI
       <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
         <MessageSquare className="size-4 text-muted-foreground" /> Comments
       </h3>
-      {canComment && (
-        <div className="mb-4 flex flex-col gap-2">
-          <div className="relative">
-            <textarea
-              value={text}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="Write a comment…  (type @ to tag someone)"
-              rows={2}
-              className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none"
-            />
-            {query !== null && picks.length > 0 && (
-              <div className="absolute left-2 top-full z-10 mt-1 w-60 overflow-hidden rounded-md border border-border bg-popover shadow-md">
-                {picks.map((p) => (
-                  <button
-                    key={p.distinctId}
-                    type="button"
-                    onClick={() => pickMention(p)}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm hover:bg-accent"
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="relative">
+          <textarea
+            value={text}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Write a comment…  (type @ to tag someone)"
+            rows={2}
+            className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none"
+          />
+          {query !== null && picks.length > 0 && (
+            <div className="absolute left-2 top-full z-10 mt-1 w-60 overflow-hidden rounded-md border border-border bg-popover shadow-md">
+              {picks.map((p) => (
+                <button
+                  key={p.distinctId}
+                  type="button"
+                  onClick={() => pickMention(p)}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm hover:bg-accent"
+                >
+                  <span
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    style={{ backgroundColor: avatarColor(p.distinctId) }}
                   >
-                    <span
-                      className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ backgroundColor: avatarColor(p.distinctId) }}
-                    >
-                      {initials(p.name)}
-                    </span>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end">
-            <Button size="sm" onClick={post} disabled={busy || !text.trim()}>
-              Comment
-            </Button>
-          </div>
+                    {initials(p.name)}
+                  </span>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+        <div className="flex justify-end">
+          <Button size="sm" onClick={post} disabled={busy || !text.trim()}>
+            Comment
+          </Button>
+        </div>
+      </div>
       <div className="flex max-h-72 flex-col gap-3 overflow-y-auto">
         {comments === null ? (
           [0, 1].map((i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)
