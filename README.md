@@ -74,19 +74,37 @@ helpers. With keys present it never overrides live data.
 npm install
 ```
 
-**2. Add your credentials**
+**2. Create the workspaces**
+
+The app expects two SuprSend workspaces named **Acme** and **Globex**, and their credentials don't
+exist until the workspaces do — so this comes first. Copy the env template, paste your account
+service token (Account Settings → Service Tokens) into it, then run the bootstrap:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in `.env.local` — every value comes from the SuprSend dashboard. The [environment variables](#environment-variables) table below shows where each one lives.
+```bash
+node --env-file=.env.local scripts/seed.mjs workspaces
+```
 
-> **New account?** It won't have the Acme and Globex workspaces yet, and the per-workspace credentials
-> don't exist until those do. Paste your `SUPRSEND_SERVICE_TOKEN` first, run
-> [Creating the workspaces](#creating-the-workspaces-first-time-only), then come back and fill in the rest.
+It creates both workspaces (or adopts them if they already exist — safe to re-run) and appends a
+labelled placeholder to `.env.local` for each credential the next step fills in. (Prefer clicking?
+Create them in the dashboard with **Add workspace** instead; the placeholders still get written the
+next time you run the command.)
 
-**3. Push the notification assets (SuprSend CLI)**
+> **Why every credential is pasted (no auto-creation):** SuprSend's Management API can create the keys,
+> but the values it returns don't map 1:1 to what the app needs — the REST "API Key" is *not* the SDK's
+> Workspace Key + Secret, and a signing key's `id` (`ws_signk_…`) is *not* the editor JWT's `kid`, which
+> must be the UID (`signing_key_…`). Copying the exact dashboard values sidesteps all of those pitfalls.
+
+**3. Add the workspace credentials**
+
+Fill in the placeholders in `.env.local` — every value comes from the SuprSend dashboard (switch to
+each workspace → **Developers → API Keys**). The [environment variables](#environment-variables) table
+below shows where each one lives.
+
+**4. Push the notification assets (SuprSend CLI)**
 
 The demo's preference categories, templates, and workflows live as plain files in `suprsend/` — the
 layout SuprSend's own CLI defines. They are a **starter kit, not ground truth**: push them if you want
@@ -111,7 +129,7 @@ That wraps `npx suprsend category|template|workflow push` per workspace (see
 > the files hold static structure only, and every value a human tunes (role, except, include, the cost
 > threshold) lives on the preference category, which the workflow conditions only read.
 
-**4. Seed the demo data**
+**5. Seed the demo data**
 
 Preview what the run would do:
 
@@ -135,7 +153,7 @@ or `objects`. The CLI has no commands for these data-plane entities, which is wh
 > addresses are also plus-addressed onto a single inbox that never delivers by default — see
 > `SAFE_TEST_EMAIL_USER` / `_DOMAIN` in `.env.example`.
 
-**5. Run**
+**6. Run**
 
 ```bash
 npm run dev
@@ -159,22 +177,6 @@ Open [http://localhost:3000](http://localhost:3000).
 `https://app.suprsend.com/en/<workspace-slug>/developers/api-keys` — the slug is usually `acme` / `globex`
 (SuprSend derives it from the workspace name), but it can differ per account, so switch workspaces in the
 dashboard rather than relying on the URL.
-
-### Creating the workspaces (first-time only)
-
-The app expects two SuprSend workspaces named **Acme** and **Globex**. If your account doesn't have them,
-create them in the dashboard (**Add workspace**), or generate them from your service token:
-
-```bash
-node --env-file=.env.local scripts/seed.mjs workspaces
-```
-
-Then continue from step 2.
-
-> **Why every credential is pasted (no auto-creation):** SuprSend's Management API can create the keys, but
-> the values it returns don't map 1:1 to what the app needs — the REST "API Key" is *not* the SDK's
-> Workspace Key + Secret, and a signing key's `id` (`ws_signk_…`) is *not* the editor JWT's `kid`, which
-> must be the UID (`signing_key_…`). Copying the exact dashboard values sidesteps all of those pitfalls.
 
 ---
 
