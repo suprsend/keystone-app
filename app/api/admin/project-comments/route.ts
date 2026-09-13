@@ -41,10 +41,11 @@ export async function POST(req: Request) {
     const text = (body.body ?? "").trim();
     if (!text) return NextResponse.json({ ok: false, error: "Comment can't be empty" }, { status: 400 });
 
-    const actor = (await cookies()).get("actor")?.value ?? "";
-    if (!actor) {
-      return NextResponse.json({ ok: false, error: "Switch to a user to comment." }, { status: 400 });
-    }
+    // No cookie means the actor was never switched — the app's default view is the
+    // Admin sentinel (see app/layout.tsx), so treat a missing cookie the same way.
+    // The tasks route already does; rejecting here made a fresh session's Admin
+    // unable to comment until they touched the Viewing-as switcher.
+    const actor = (await cookies()).get("actor")?.value || "admin";
 
     const mentionId = body.mentionId && body.mentionId !== actor ? body.mentionId : undefined;
     const comment = await addComment(ws, tenant, { authorId: actor, body: text, mentionId }, new Date().toISOString());
