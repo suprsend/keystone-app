@@ -38,6 +38,7 @@ const OTHER_USER_ROLE = "Watcher";
 // level the cell is roles-only.
 export function RecipientCell({
   roles,
+  extraRoles,
   emails,
   editable,
   onChange,
@@ -47,6 +48,9 @@ export function RecipientCell({
   onRemoveMember,
 }: {
   roles: PersonRole[];
+  /** Roles from `recip:` tags outside the app's role set (added in the SuprSend
+   *  dashboard). Shown as read-only pills — the app never edits or removes them. */
+  extraRoles?: string[];
   emails: string[];
   editable: boolean;
   onChange: (next: Recipients) => void;
@@ -81,7 +85,7 @@ export function RecipientCell({
   return (
     <div className="relative flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        {roles.length === 0 && emails.length === 0 && (members ?? []).length === 0 && (
+        {roles.length === 0 && (extraRoles ?? []).length === 0 && emails.length === 0 && (members ?? []).length === 0 && (
           <span className="text-xs text-muted-foreground">—</span>
         )}
         {(members ?? []).map((m) => (
@@ -106,6 +110,15 @@ export function RecipientCell({
                 <X className="size-3" />
               </button>
             )}
+          </span>
+        ))}
+        {(extraRoles ?? []).map((r) => (
+          <span
+            key={`extra:${r}`}
+            className="inline-flex items-center rounded-full border border-dashed border-border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground"
+            title="Managed in the SuprSend dashboard — this app only displays it."
+          >
+            {r}
           </span>
         ))}
         {roles.map((r) => (

@@ -37,6 +37,20 @@ export const roleToSlug = (r: PersonRole): string => r.toLowerCase().replace(/[^
 const ROLE_BY_SLUG: Record<string, PersonRole> = Object.fromEntries(ROLE_OPTIONS.map((r) => [roleToSlug(r), r]));
 const tagsToRoles = (tags: string[]): PersonRole[] =>
   tags.filter((t) => t.startsWith(RECIP_PREFIX)).map((t) => ROLE_BY_SLUG[t.slice(RECIP_PREFIX.length)]).filter(Boolean) as PersonRole[];
+// `recip:` tags whose slug isn't one of the app's four roles — e.g. added on a
+// workflow created directly in the SuprSend dashboard. Shown read-only (title-cased
+// from the slug) rather than silently dropped.
+const tagsToExtraRoles = (tags: string[]): string[] =>
+  tags
+    .filter((t) => t.startsWith(RECIP_PREFIX) && !ROLE_BY_SLUG[t.slice(RECIP_PREFIX.length)])
+    .map((t) =>
+      t
+        .slice(RECIP_PREFIX.length)
+        .split("-")
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" "),
+    );
 const rolesToTags = (roles: PersonRole[]): string[] => roles.map((r) => `${RECIP_PREFIX}${roleToSlug(r)}`);
 
 function authHeaders(): Record<string, string> {
@@ -55,6 +69,8 @@ export interface NotifConfig {
   category: string;
   /** Recipient roles (from live `recip:` tags, or the static default). */
   roles: PersonRole[];
+  /** `recip:` tags outside the app's role set (dashboard-managed) — display-only. */
+  extraRoles: string[];
   /** Specific-user recipients by email (from live `recipuser:` tags). */
   emails: string[];
 }
@@ -76,6 +92,7 @@ export async function getNotifConfig(ws: WorkspaceSlug): Promise<NotifConfig[]> 
       slug: n.id,
       category: categorySlugOf(n.name),
       roles: n.recipients,
+      extraRoles: [],
       emails: [],
     }));
   }
@@ -89,6 +106,7 @@ export async function getNotifConfig(ws: WorkspaceSlug): Promise<NotifConfig[]> 
     slug: w.slug,
     category: w.category ?? "",
     roles: tagsToRoles(w.tags ?? []),
+    extraRoles: tagsToExtraRoles(w.tags ?? []),
     emails: tagsToEmails(w.tags ?? []),
   }));
 }
@@ -110,7 +128,13 @@ export async function setWorkflowRecipients(
   const body = wf.body as Record<string, unknown>;
   const existing = (body.tags as string[] | undefined) ?? [];
   // Drop old recipient tags (roles + emails), keep everything else, re-add both.
-  const kept = existing.filter((t) => !t.startsWith(RECIP_PREFIX) && !t.startsWith(EMAIL_PREFIX));
+  // `recip:` tags outside the app's role set are dashboard-managed — the UI can't
+  // re-add them, so keep them too instead of destroying them on every save.
+  const kept = existing.filter(
+    (t) =>
+      !t.startsWith(EMAIL_PREFIX) &&
+      (!t.startsWith(RECIP_PREFIX) || !ROLE_BY_SLUG[t.slice(RECIP_PREFIX.length)]),
+  );
   body.tags = [...kept, ...rolesToTags(roles), ...emailsToTags(emails)];
   const r = await publishWorkflow(ws, slug, body);
   return { ok: r.ok, status: r.status };
