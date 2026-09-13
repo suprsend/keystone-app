@@ -213,19 +213,6 @@ export function getNotification(ws: WorkspaceSlug, id: string): NotificationDef 
   return getNotifications(ws).find((n) => n.id === id);
 }
 
-export const NOTIF_GROUPS: NotifGroup[] = ["Assignments", "Project status", "Tasks", "Collaboration"];
-
-/** Trigger events an admin can pick from when creating/editing a notification. */
-export const TRIGGER_OPTIONS: { key: NotifTriggerKey; label: string; group: NotifGroup }[] = [
-  { key: "project_assigned", label: "Project manager assigned or changed", group: "Assignments" },
-  { key: "project_started", label: "Project status → In-flight", group: "Project status" },
-  { key: "project_paused", label: "Project status → Paused", group: "Project status" },
-  { key: "task_completed", label: "Task marked complete", group: "Tasks" },
-  { key: "task_upcoming", label: "Task due within 3 days", group: "Tasks" },
-  { key: "comment_added", label: "Comment added to project", group: "Collaboration" },
-  { key: "tagged_on_project", label: "User @mentioned on project", group: "Collaboration" },
-];
-
 /** Recipient roles a notification can target. */
 export const ROLE_OPTIONS: PersonRole[] = [
   "Project Manager",
@@ -233,42 +220,3 @@ export const ROLE_OPTIONS: PersonRole[] = [
   "Project Sponsor",
   "Process Owner",
 ];
-
-// ── Subscriptions ────────────────────────────────────────────────────────────
-export type SubSource = "default" | "profile" | "pm" | "project";
-
-/** The organization default for a person: subscribed if their role is a recipient. */
-export function defaultSubscribed(notif: NotificationDef, role: PersonRole): boolean {
-  return notif.recipients.includes(role);
-}
-
-export interface ResolvedSub {
-  subscribed: boolean;
-  /** Where the current value came from — drives the "inherited / PM-managed" labels. */
-  source: SubSource;
-}
-
-/**
- * Resolve a subscription at PROJECT scope using PRD precedence:
- * user's project choice → PM's project choice → user's profile choice → org default.
- */
-export function resolveProjectSub(
-  notif: NotificationDef,
-  role: PersonRole,
-  opts: { projectOverride?: boolean; pmOverride?: boolean; profileOverride?: boolean },
-): ResolvedSub {
-  if (opts.projectOverride !== undefined) return { subscribed: opts.projectOverride, source: "project" };
-  if (opts.pmOverride !== undefined) return { subscribed: opts.pmOverride, source: "pm" };
-  if (opts.profileOverride !== undefined) return { subscribed: opts.profileOverride, source: "profile" };
-  return { subscribed: defaultSubscribed(notif, role), source: "default" };
-}
-
-/** Resolve a subscription at PROFILE (global) scope: user's profile choice → org default. */
-export function resolveProfileSub(
-  notif: NotificationDef,
-  role: PersonRole,
-  profileOverride?: boolean,
-): ResolvedSub {
-  if (profileOverride !== undefined) return { subscribed: profileOverride, source: "profile" };
-  return { subscribed: defaultSubscribed(notif, role), source: "default" };
-}

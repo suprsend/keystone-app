@@ -20,11 +20,6 @@ export function activityBadge(m: MessageRecord): { label: string; tone: BadgeTon
   return { label: "Queued", tone: "outline" };
 }
 
-/** The timestamp behind activityBadge — for the "last activity" column / tooltip. */
-export function lastActivityIso(m: MessageRecord): string | null {
-  return m.readAt ?? m.clickedAt ?? m.seenAt ?? m.deliveredAt ?? m.triggeredAt ?? m.updatedAt ?? m.createdAt ?? null;
-}
-
 export type RunStatus = "delivered" | "partial" | "failed" | "in_progress";
 
 export function runStatusBadge(status: RunStatus): { label: string; tone: BadgeTone; className?: string } {
@@ -84,16 +79,6 @@ export function timeAgo(iso?: string | null): string {
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.round(hrs / 24)}d ago`;
-}
-
-export function timeOfDay(iso?: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 /** Full local timestamp with seconds — for the detail / timeline rows. */

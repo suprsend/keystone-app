@@ -46,8 +46,6 @@ async function call<T = unknown>(
 
 // ───────────────────────── Templates (v2) ─────────────────────────
 
-export type TemplateChannel = "email" | "inbox" | "sms" | "whatsapp" | "slack" | "androidpush" | "iospush" | "webpush";
-export const TEMPLATE_CHANNELS: TemplateChannel[] = ["email", "inbox", "sms", "whatsapp", "slack", "androidpush", "iospush", "webpush"];
 
 export interface TemplateSummary {
   slug: string;
@@ -102,112 +100,6 @@ export interface TemplateDraft {
   sampleData?: Record<string, string>;
 }
 
-// Push email as HTML/raw mode (type:"raw") so the SuprSend editor opens the HTML
-// editor with our content and the preview renders — NOT "designer", which leaves
-// the visual canvas empty (you can't push blocks to the drag-and-drop designer).
-function emailVariantContent(c: EmailContent) {
-  return {
-    templating_language: "handlebars",
-    subject: c.subject,
-    body: {
-      type: "raw",
-      raw: { html: c.html, text: "" },
-    },
-  };
-}
-
-function inboxVariantContent(c: InboxContent) {
-  return {
-    templating_language: "handlebars",
-    schema_version: "1.0",
-    header: c.title,
-    body: c.body,
-    action_url: "",
-    open_in_new_tab: false,
-    image_url: "",
-    subtext: null,
-    importance: "default",
-    avatar: null,
-    tags: [],
-    is_expiry_enabled: false,
-    expiry: null,
-    is_pinned: false,
-    buttons: c.button ? [{ text: c.button.text, url: c.button.url, open_in_new_tab: true }] : [],
-    extra_data: "",
-  };
-}
-
-function smsVariantContent(c: TextContent) {
-  return { templating_language: "handlebars", type: "basic", category: "", header: "", body: c.body };
-}
-
-// WhatsApp forbids a {{variable}} as the first or last token of the body. The LLM
-// can't be trusted to honor this, so enforce it deterministically.
-function safeWhatsappBody(body: string): string {
-  let b = body.trim();
-  if (/^\{\{/.test(b)) b = `Hi, ${b}`;
-  if (/\}\}$/.test(b)) b = `${b}.`;
-  return b;
-}
-
-function whatsappVariantContent(c: TextContent, sample?: Record<string, string>) {
-  const text = safeWhatsappBody(c.body);
-  // WhatsApp validates that every variable in the body has an example value.
-  const vars = [...new Set([...text.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]))];
-  const parameters_dict: Record<string, string> = {};
-  for (const v of vars) parameters_dict[v] = sample?.[v] ?? v;
-  return {
-    templating_language: "handlebars",
-    category: "UTILITY",
-    subcategory: "basic_interactive",
-    header: null,
-    body: { text, parameters_dict },
-    footer: null,
-    button_type: "NONE",
-    buttons: [],
-  };
-}
-
-// SuprSend Slack body_block is JSONNET, where variables are `data.key` — NOT
-// handlebars {{key}}. We keep blocks in handlebars form internally (previewable,
-// editable) and convert to JSONNET only on push. e.g.
-//   "*{{company}}*"            →  "*" + data.company + "*"
-//   url: "{{link}}"            →  url: data.link
-//   "{{$brand.brand_name}}"    →  data["$brand"].brand_name
-//   "{{$recipient.name}}"      →  data["$recipient"].name
-// Namespaced refs ($brand/$recipient/$actor/…) use bracket access because `$` is
-// reserved in Jsonnet; plain + dotted refs use dot access. (Per the SuprSend
-// jsonnet-syntax skill: tenant = data["$brand"].key, recipient = data["$recipient"].key.)
-function refToJsonnet(ref: string): string {
-  const segs = ref.trim().split(".");
-  const first = segs[0];
-  const head = first.startsWith("$") ? `data[${JSON.stringify(first)}]` : `data.${first}`;
-  return head + segs.slice(1).map((s) => `.${s}`).join("");
-}
-function strToJsonnet(s: string): string {
-  if (!/\{\{/.test(s)) return JSON.stringify(s);
-  // Match {{ var }} and {{{ var }}}, where var may be dotted and/or $-namespaced.
-  const re = /\{\{\{?\s*([\w$][\w$.]*)\s*\}?\}\}/g;
-  const parts: string[] = [];
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(s))) {
-    if (m.index > last) parts.push(JSON.stringify(s.slice(last, m.index)));
-    parts.push(refToJsonnet(m[1]));
-    last = m.index + m[0].length;
-  }
-  if (last < s.length) parts.push(JSON.stringify(s.slice(last)));
-  return parts.length ? parts.join(" + ") : '""';
-}
-function toJsonnet(v: unknown): string {
-  if (typeof v === "string") return strToJsonnet(v);
-  if (Array.isArray(v)) return `[${v.map(toJsonnet).join(",")}]`;
-  if (v && typeof v === "object") {
-    return `{${Object.entries(v).map(([k, val]) => `${JSON.stringify(k)}:${toJsonnet(val)}`).join(",")}}`;
-  }
-  return JSON.stringify(v);
-}
-/** Reverse: JSONNET body_block → handlebars blocks (best-effort, for read/edit). */
 function jsonnetToBlocks(src: string): SlackBlock[] {
   // data["$ns"].a.b → "{{$ns.a.b}}"  (namespaced bracket access first)
   let s = src.replace(/\bdata\[(['"])(\$[\w]+)\1\]((?:\.\w+)*)/g, (_m, _q, ns, tail) => `"{{${ns}${tail}}}"`);
@@ -227,39 +119,6 @@ function jsonnetToBlocks(src: string): SlackBlock[] {
   }
 }
 
-function slackVariantContent(c: SlackContent) {
-  return {
-    templating_language: "handlebars",
-    body_type: "block",
-    body_text: "",
-    body_block: toJsonnet({ blocks: c.blocks }),
-  };
-}
-
-// Push variant content (Android/iOS/Web share this shape on SuprSend). The title
-// field is `header`; `body` is the message. icon_url defaults to the brand logo.
-function pushVariantContent(c: PushContent) {
-  return {
-    templating_language: "handlebars",
-    header: c.title,
-    body: c.body,
-    action_url: c.actionUrl ?? "",
-    icon_url: "{{$brand.logo}}",
-  };
-}
-
-// One place that maps a channel → the draft field that holds it + its content builder.
-const CHANNEL_CONTENT: Record<TemplateChannel, (d: TemplateDraft) => object | null> = {
-  email: (d) => (d.email ? emailVariantContent(d.email) : null),
-  inbox: (d) => (d.inbox ? inboxVariantContent(d.inbox) : null),
-  sms: (d) => (d.sms ? smsVariantContent(d.sms) : null),
-  whatsapp: (d) => (d.whatsapp ? whatsappVariantContent(d.whatsapp, d.sampleData) : null),
-  slack: (d) => (d.slack && d.slack.blocks?.length ? slackVariantContent(d.slack) : null),
-  androidpush: (d) => (d.androidpush ? pushVariantContent(d.androidpush) : null),
-  iospush: (d) => (d.iospush ? pushVariantContent(d.iospush) : null),
-  webpush: (d) => (d.webpush ? pushVariantContent(d.webpush) : null),
-};
-
 export async function listTemplates(ws: WorkspaceSlug): Promise<TemplateSummary[]> {
   if (isMock(ws)) return [];
   const r = await call<{ results?: TemplateSummary[] }>(ws, "v2", "template/?limit=100");
@@ -271,37 +130,6 @@ export function getTemplate(ws: WorkspaceSlug, slug: string): Promise<MgmtResult
     return Promise.resolve({ ok: false, status: 404, body: {} as TemplateSummary });
   }
   return call<TemplateSummary>(ws, "v2", `template/${slug}/`);
-}
-
-/**
- * Resolve the embedded-editor `variantId` for a tenant. A variant's key is
- * (variant_id, tenant_id, locale) — each tenant (including `default`) has its OWN
- * variant with its own id (e.g. "1", "2", "3"), assigned at creation — NOT the
- * tenant id, and NOT "default" (that id belongs to the master at tenant_id=null,
- * which the embedded editor can't load). So we look it up live: find the variant
- * whose tenant_id matches and return its id. Fallback (no variant yet) → the
- * tenant id itself, so the editor creates the override under a stable id.
- */
-export async function resolveTenantVariantId(
-  ws: WorkspaceSlug,
-  slug: string,
-  tenantId: string,
-): Promise<string> {
-  if (!tenantId) return "default";
-  // The variant id is consistent across a template's channels, so probing one
-  // (the first enabled) is enough. Fall back to email if meta is unavailable.
-  const meta = await getTemplate(ws, slug);
-  const channel = (meta.ok && meta.body.enabled_channels?.[0]) || "email";
-  const r = await call<{ results?: { id?: string; tenant_id?: string | null }[] }>(
-    ws,
-    "v2",
-    `template/${slug}/channel/${channel}/variant/`,
-  );
-  const match = (r.ok ? r.body.results ?? [] : []).find((v) => v.tenant_id === tenantId);
-  // When the tenant has no override variant, fall back to the MASTER variant
-  // ("default") rather than the tenant id — the tenant id is not a real variant id
-  // and 404s as "Variant not found". The tenant scope still rides on tenantId.
-  return match?.id ?? "default";
 }
 
 interface EmailVariantBody {
@@ -395,68 +223,11 @@ export function deleteTemplate(ws: WorkspaceSlug, slug: string) {
   return call(ws, "v2", `template/${slug}/`, { method: "DELETE" });
 }
 
-/**
- * Publish a template: create metadata → set each channel's default variant → commit.
- * Returns the first failing step (so the caller can keep the workflow unpublished).
- */
-export async function publishTemplate(
-  ws: WorkspaceSlug,
-  draft: TemplateDraft,
-): Promise<MgmtResult> {
-  const channels = TEMPLATE_CHANNELS.filter((ch) => CHANNEL_CONTENT[ch](draft) !== null);
-  if (channels.length === 0) {
-    return { ok: false, status: 400, body: { error: "template has no channels" } };
-  }
-
-  const meta = await call(ws, "v2", `template/${draft.slug}/`, {
-    method: "POST",
-    body: JSON.stringify({
-      name: draft.name,
-      description: draft.description ?? "",
-      tags: ["keystone", "ai-authored"],
-      enabled_channels: channels,
-    }),
-  });
-  if (!meta.ok) return meta;
-
-  for (const ch of channels) {
-    const content = CHANNEL_CONTENT[ch](draft);
-    const v = await call(ws, "v2", `template/${draft.slug}/channel/${ch}/variant/default/`, {
-      method: "POST",
-      body: JSON.stringify({ channel: ch, id: "default", tenant_id: null, locale: "en", conditions: [], content }),
-    });
-    if (!v.ok) return v;
-  }
-
-  // Push sample data so the SuprSend preview resolves merge tags (no red "not
-  // defined" errors). Non-fatal: a mock-data failure shouldn't block publish.
-  await setMockData(ws, draft.slug, draft.sampleData);
-
-  const committed = await call(ws, "v2", `template/${draft.slug}/commit/?commit_message=${encodeURIComponent("Published from Keystone")}`, {
-    method: "PATCH",
-    body: JSON.stringify({}),
-  });
-  // An identical re-publish has nothing to commit — that's a success, not a failure.
-  return isNoChanges(committed) ? { ok: true, status: 200, body: { status: "active" } } : committed;
-}
-
 function isNoChanges(r: MgmtResult): boolean {
   const body = r.body as { error_code?: string } | undefined;
   return r.status === 409 && body?.error_code === "no_changes_to_commit";
 }
 
-/** Set the template's preview payload (the {{variable}} sample values). */
-export async function setMockData(ws: WorkspaceSlug, slug: string, sample?: Record<string, string>) {
-  if (!sample || Object.keys(sample).length === 0) return;
-  try {
-    await call(ws, "v2", `template/${slug}/mock_data/`, {
-      method: "PATCH",
-      body: JSON.stringify({ data: { payload: sample } }),
-    });
-  } catch {
-    // ignore — preview data is best-effort
-  }
-}
 
 // ───────────────────────── Workflows (v1) ─────────────────────────
 
