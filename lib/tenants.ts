@@ -20,7 +20,6 @@ export type TenantId =
 export type Stage = "Discovery" | "Scoping" | "Business Case" | "Development" | "Testing" | "Launch";
 export type Health = "On track" | "At risk" | "Off track";
 
-export const STAGES: Stage[] = ["Discovery", "Scoping", "Business Case", "Development", "Testing", "Launch"];
 
 export interface Tenant {
   id: TenantId;

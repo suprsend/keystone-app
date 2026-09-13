@@ -4,7 +4,7 @@
 import "server-only";
 // `Event` is aliased — the bare name collides with the global `Event` that
 // undici/axios reference internally (a CJS `const { Event }` shadow breaks them).
-import { WorkflowTriggerRequest, Event as SuprsendEvent, SubscriberListBroadcast } from "@suprsend/node-sdk";
+import { WorkflowTriggerRequest, Event as SuprsendEvent } from "@suprsend/node-sdk";
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client } from "@/lib/server/workspace";
 
@@ -44,27 +44,6 @@ export async function trackEvent(
   const c = client(ws);
   const event = new SuprsendEvent(distinctId, eventName, properties, { tenant_id: tenantId });
   return c.track_event(event);
-}
-
-/**
- * LIST trigger — broadcast one template to every member of a subscriber list in a
- * single request. Per-recipient preferences still apply; {{$recipient.*}} resolves
- * per member. This is how "announce to the whole company" works.
- */
-export async function broadcastToList(
-  ws: Workspace,
-  opts: { listId: string; template: string; category: string; channels?: string[]; data?: Record<string, unknown> },
-  tenantId = "default",
-) {
-  const c = client(ws);
-  const body: Record<string, unknown> = {
-    list_id: opts.listId,
-    template: opts.template,
-    notification_category: opts.category,
-    data: opts.data ?? {},
-  };
-  if (opts.channels?.length) body.channels = opts.channels;
-  return c.subscriber_lists.broadcast(new SubscriberListBroadcast(body, { tenant_id: tenantId }));
 }
 
 /**
@@ -110,12 +89,3 @@ export async function triggerUsers(
   return c.workflows.trigger(req);
 }
 
-/** List team objects (for the broadcast audience picker). */
-export async function listTeams(ws: Workspace): Promise<{ id: string; name: string; subscribers: number }[]> {
-  const res = (await client(ws).objects.list("team", { limit: 50 })) as { results?: { object_id?: string; id?: string; properties?: { name?: string }; subscriptions_count?: number }[] };
-  return (res.results ?? []).map((o) => ({
-    id: o.object_id ?? o.id ?? "",
-    name: o.properties?.name ?? o.object_id ?? o.id ?? "",
-    subscribers: o.subscriptions_count ?? 0,
-  }));
-}
