@@ -25,46 +25,7 @@ This README has three parts. Read them in order:
 
 ---
 
-## Source of truth: your SuprSend account, not this repo
-
-The one thing to understand before anything else:
-
-- **The app renders whatever is in your SuprSend account.** Every screen fetches live — templates,
-  workflows' recipient tags, preference categories, brand, logs, projects, people. Nothing in the repo
-  filters or overrides what your account returns. Create a brand-new workflow + template in the SuprSend
-  dashboard and it appears in the app with no code change.
-- **`suprsend/` is a reference starter kit, not ground truth.** It holds the demo's preference
-  categories, templates, and workflows as plain files, in the exact on-disk layout
-  [SuprSend's CLI](https://docs.suprsend.com/reference/cli-intro) defines. Read the folder to see what
-  the demo ships; push it with the CLI if you want it; ignore it or replace it from the dashboard if you
-  don't. The app behaves the same either way.
-- **`scripts/seed.mjs` exists only for what the CLI can't create** — the demo *data*: tenants
-  (projects), users (the roster), and project objects with role subscriptions. Those are data-plane
-  entities with no CLI commands (SDK/API only), which is why they're a script and the assets aren't.
-- **If you edit in the SuprSend dashboard**, the dashboard version is what the app shows, immediately.
-  To bring those edits back into files, run `npx suprsend template pull -w <workspace>` (same for
-  `workflow` / `category`). To reset the account to the repo's version, re-push — knowing that a
-  template re-push **overwrites** dashboard edits, while a workflow re-push is safe by design (the files
-  hold static structure; every value a human tunes lives on the preference category, which workflow
-  conditions only read).
-
-The only repo-side registry left is `lib/notifications.ts` — a static catalog used as a **fallback when
-a workspace has no API keys** (so screens render something instead of nothing) plus two slug-mapping
-helpers. With keys present it never overrides live data.
-
----
-
 ## Getting started
-
-> **Note — there's no login.** Keystone is a reference app, so it skips auth entirely and treats
-> whoever opens it as an admin. Running it locally is the intended path; deploying it (Vercel or
-> anywhere else) to share a demo works fine too — just keep in mind that anyone with the URL gets in.
->
-> Two spots to revisit when you take these patterns into your own product:
-> [`/api/subscriber-token`](app/api/subscriber-token/route.ts) reads `distinct_id` from the query
-> string — take it from your authenticated session instead — and
-> [`/api/editor-token`](app/api/editor-token/route.ts) uses `entity_id: "*"`, which covers every
-> template; scope it to the ones you mean and gate the route to admins.
 
 **Prerequisites:** Node.js 20+ and a SuprSend account.
 
@@ -94,12 +55,8 @@ placeholder to `.env.local` for each remaining credential the next step fills in
 Create them in the dashboard with **Add workspace** instead; the key fill and placeholders still get
 written the next time you run the command.)
 
-> **Why the other four credentials are pasted (no auto-creation):** SuprSend shows the workspace
-> secret and the signing-key Base64 exactly **once** in the dashboard and no API returns them; the
-> public key and signing-key UID live only in the dashboard's key sections. And the near-misses are
-> real: the REST "API Key" is *not* the SDK's Workspace Key + Secret, and a signing key's `id`
-> (`ws_signk_…`) is *not* the editor JWT's `kid`, which must be the UID (`signing_key_…`). Copying the
-> exact dashboard values sidesteps all of those pitfalls.
+> The remaining four credentials per workspace are pasted by hand because no API returns them —
+> SuprSend shows the secret and the signing-key Base64 exactly once, in the dashboard.
 
 **3. Add the workspace credentials**
 
@@ -109,9 +66,10 @@ below shows where each one lives.
 
 **4. Push the notification assets (SuprSend CLI)**
 
-The demo's preference categories, templates, and workflows live as plain files in `suprsend/` — the
-layout SuprSend's own CLI defines. They are a **starter kit, not ground truth**: push them if you want
-them, or build your own in the SuprSend dashboard — the app renders whatever your account holds.
+The demo's preference categories, templates, and workflows live as plain files in `suprsend/`, in the
+layout [SuprSend's CLI](https://docs.suprsend.com/reference/cli-intro) defines. This step copies them
+into your two workspaces. They're a starting kit — after this, your SuprSend account is the live copy:
+anything you change or add in the SuprSend dashboard shows up in the app as is, no code change needed.
 
 ```bash
 npm run push:assets -- --dry-run
@@ -146,10 +104,11 @@ Then run it:
 npm run seed
 ```
 
-Creates the tenants (projects), users (the roster), and project objects + role subscriptions the app
-reads. Required — the app reads these live and does not create them at runtime, so an unseeded
-workspace renders empty states. Run one stage at a time with `seed.mjs <stage>` — `tenants`, `users`,
-or `objects`. The CLI has no commands for these data-plane entities, which is why they're a script.
+Creates the demo world the notifications are about: 4 projects, 24 people, and who's on which project
+with which role. Without this, screens like Projects are empty — the app reads everything live from
+SuprSend and creates nothing at runtime. (This is a script, not a CLI step, because the SuprSend CLI
+manages design-time assets only; tenants, users, and objects are created via the SDK.) Run one stage at
+a time with `seed.mjs <stage>` — `tenants`, `users`, or `objects`.
 
 > **Email needs a vendor.** A fresh SuprSend workspace has no email vendor configured, so email sends fail
 > while the in-app inbox works immediately. Configure one under **Vendors** if you want mail to land. Test
@@ -163,6 +122,10 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+**Deploying (optional).** The app runs anywhere Next.js does (e.g. Vercel). There's no user login;
+to share a demo, set `DEMO_PASSWORD` on the deployment and every route sits behind that one shared
+password (`proxy.ts`). Remember that a deployed demo reads and writes your real SuprSend account.
 
 ### Environment variables
 
@@ -274,6 +237,12 @@ reference is at <https://docs.suprsend.com>.
 - **Node SDK** — wraps `hub.suprsend.com`; you call methods (`users.upsert`, `objects.*`,
   `tenants.get/upsert`, `workflows.trigger`, `messages.list`), not raw URLs.
 
+> **Taking these patterns into a real product?** Two routes are demo-simplified on purpose:
+> [`/api/subscriber-token`](app/api/subscriber-token/route.ts) reads `distinct_id` from the query
+> string — take it from your authenticated session instead — and
+> [`/api/editor-token`](app/api/editor-token/route.ts) uses `entity_id: "*"` (every template); scope
+> it down and gate the route to admins.
+
 ### Keys & env (one set of account keys + one set per customer)
 
 | Env var | Scope | What it authorizes |
@@ -291,6 +260,17 @@ Secrets never reach the browser; `.env.local` and `keys.txt` are gitignored.
 
 > A condensed screen-by-screen API index is in
 > [`docs/architecture-apis-by-screen.md`](docs/architecture-apis-by-screen.md).
+
+### What's in your account vs. what's in the repo
+
+Every screen fetches live from SuprSend — templates, workflows, preference categories, brand, logs,
+projects, people. The repo ships the `suprsend/` files as a starting kit (step 4 pushes them) and the
+seed script's demo data (step 5), but at runtime the app renders whatever your account holds, including
+things you create in the dashboard that this repo has never heard of. To bring dashboard edits back
+into files, `npx suprsend template pull -w <workspace>` (same for `workflow` / `category`); re-pushing
+a template overwrites dashboard edits, re-pushing a workflow is safe (the files hold structure only —
+tunable values live on the preference category). The one static registry, `lib/notifications.ts`, is a
+fallback for workspaces with no API keys and never overrides live data.
 
 ### Channels
 
