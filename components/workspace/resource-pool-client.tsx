@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
-import { Plus, Users, Shield } from "lucide-react";
+import { Users, Shield } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";

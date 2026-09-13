@@ -40,65 +40,6 @@ export function runStatusBadge(status: RunStatus): { label: string; tone: BadgeT
   }
 }
 
-// ───────────────────────── Analytics aggregation ─────────────────────────
-// Funnel counts by timestamp presence (a "seen" msg was also delivered), not the
-// single latest `status`. Same logic the server used — moved client-side so a
-// channel filter just re-aggregates the same raw record list.
-
-export interface Funnel {
-  sent: number;
-  delivered: number;
-  opened: number;
-  failed: number;
-}
-export interface Breakdown extends Funnel {
-  label: string;
-  /** Identifier to match against the live set (workflow slug, or template name). */
-  slug?: string;
-}
-export interface Analytics {
-  overall: Funnel;
-  byChannel: Breakdown[];
-  byTemplate: Breakdown[];
-  byWorkflow: Breakdown[];
-}
-
-function emptyFunnel(): Funnel {
-  return { sent: 0, delivered: 0, opened: 0, failed: 0 };
-}
-function tally(f: Funnel, m: MessageRecord) {
-  f.sent += 1;
-  if (m.deliveredAt) f.delivered += 1;
-  if (m.seenAt) f.opened += 1;
-  if (m.failed) f.failed += 1;
-}
-
-/** Aggregate a record list into funnel + per-template + per-workflow breakdowns. */
-export function computeAnalytics(records: MessageRecord[]): Analytics {
-  const overall = emptyFunnel();
-  const channels = new Map<string, Breakdown>();
-  const templates = new Map<string, Breakdown>();
-  const workflows = new Map<string, Breakdown>();
-  const bump = (map: Map<string, Breakdown>, label: string, m: MessageRecord, slug?: string) => {
-    const row = map.get(label) ?? { label, slug, ...emptyFunnel() };
-    tally(row, m);
-    map.set(label, row);
-  };
-  for (const m of records) {
-    tally(overall, m);
-    if (m.channel) bump(channels, m.channel, m);
-    bump(templates, m.templateName ?? "Untitled template", m, m.templateName ?? undefined);
-    if (m.workflowSlug) bump(workflows, m.workflowName ?? m.workflowSlug, m, m.workflowSlug);
-  }
-  const order = (a: Breakdown, b: Breakdown) => b.sent - a.sent;
-  return {
-    overall,
-    byChannel: [...channels.values()].sort(order),
-    byTemplate: [...templates.values()].sort(order),
-    byWorkflow: [...workflows.values()].sort(order),
-  };
-}
-
 // Humanize a workflow node ref generically (no per-workflow hardcoding):
 // "send_benefits_reminder" → "Benefits Reminder", "delay_2d" → "Delay 2d".
 export function humanizeNode(ref?: string | null): string {

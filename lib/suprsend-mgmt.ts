@@ -460,34 +460,6 @@ export async function setMockData(ws: WorkspaceSlug, slug: string, sample?: Reco
 
 // ───────────────────────── Workflows (v1) ─────────────────────────
 
-export interface WorkflowSummary {
-  slug: string;
-  name: string;
-  trigger_type?: string;
-  category?: string;
-  description?: string;
-  status?: string;
-  updated_at?: string;
-  last_executed_at?: string | null;
-  updated_by?: { name?: string; email?: string };
-  tree?: { nodes?: unknown[] };
-}
-
-// List ALL workflows (live + draft-only). `mode=draft` returns every workflow but
-// stamps each with the draft status; `mode=live` returns only published ones. So
-// we take the full list from draft and mark a workflow "active" (Live) when it also
-// has a published (live) version — matching SuprSend's Live/Draft column exactly.
-export async function listWorkflows(ws: WorkspaceSlug): Promise<WorkflowSummary[]> {
-  if (isMock(ws)) return [];
-  const [all, live] = await Promise.all([
-    call<{ results?: WorkflowSummary[] }>(ws, "v1", "workflow/?mode=draft&limit=100"),
-    call<{ results?: WorkflowSummary[] }>(ws, "v1", "workflow/?mode=live&limit=100"),
-  ]);
-  const liveSlugs = new Set((live.ok ? live.body.results ?? [] : []).map((w) => w.slug));
-  const list = all.ok ? all.body.results ?? [] : [];
-  return list.map((w) => ({ ...w, status: liveSlugs.has(w.slug) ? "active" : "draft" }));
-}
-
 // Fetch a workflow's definition. Live first; fall back to the draft for workflows
 // that have never been published.
 export async function getWorkflow(ws: WorkspaceSlug, slug: string): Promise<MgmtResult> {
