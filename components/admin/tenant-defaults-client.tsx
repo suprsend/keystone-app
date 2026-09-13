@@ -46,6 +46,8 @@ interface RecipConfig {
   slug: string;
   category: string;
   roles: PersonRole[];
+  /** Dashboard-managed roles the app displays but never edits. */
+  extraRoles?: string[];
   emails: string[];
 }
 
@@ -572,6 +574,7 @@ function Body() {
                         <td className="px-4 py-3 align-top">
                           <RecipientCell
                             roles={(tenantRoles[r.category] ?? []) as PersonRole[]}
+                            extraRoles={cfg?.extraRoles ?? []}
                             emails={cfg?.emails ?? []}
                             editable={active}
                             onChange={(next) => saveTenantRoles(r.category, next.roles)}
