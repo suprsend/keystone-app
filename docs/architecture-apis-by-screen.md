@@ -78,6 +78,6 @@ Tabs: Overview · Resources · Notifications
 
 ## One-off (not a screen)
 
-- **Provisioning** — `scripts/provision.mjs` → **Node SDK** (tenants/users/objects/categories) + **Mgmt API** (templates/workflows)
+- **Seeding** — `scripts/seed.mjs` → **Node SDK** (tenants/users/objects); assets in `suprsend/` push via the SuprSend CLI (`scripts/push-assets.mjs`)
 </content>
 </invoke>

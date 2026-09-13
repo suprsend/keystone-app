@@ -1,0 +1,17 @@
+{
+  "actor_distinct_id": null,
+  "actor_object": null,
+  "actor_sub_type": "user",
+  "is_batch": true,
+  "batch_count": 3,
+  "payload": {
+    "project_id": "acme-aero",
+    "comment_author": "Karen Brooks",
+    "comment_body": "Pushed the latest FMEA — can you review section 3?",
+    "project_link": "https://app.keystone.example/projects/demo"
+  },
+  "recipient_distinct_id": "u_dana_carter",
+  "recipient_object": null,
+  "recipient_sub_type": "user",
+  "tenant_id": "acme-aero"
+}

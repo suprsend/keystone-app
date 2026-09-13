@@ -90,7 +90,7 @@ export async function removeUser(ws: Workspace, distinctId: string) {
 }
 
 // The object type for projects (project = object; members subscribed with a `role`
-// property — drives object fan-out + project membership). Mirrors scripts/provision.mjs.
+// property — drives object fan-out + project membership). Mirrors scripts/seed.mjs.
 const PROJECT_OBJECT = "project";
 
 /** The projects that EXIST in this workspace — read from SuprSend (the project

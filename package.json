@@ -18,7 +18,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed": "node --env-file=.env.local scripts/seed.mjs",
+    "push:assets": "node --env-file=.env.local scripts/push-assets.mjs"
   },
   "dependencies": {
     "@suprsend/node-sdk": "^1.15.1",

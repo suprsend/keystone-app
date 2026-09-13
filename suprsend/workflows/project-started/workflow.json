@@ -1,0 +1,97 @@
+{
+  "$schema": "https://schema.suprsend.com/workflow/v1/schema.json",
+  "slug": "project-started",
+  "name": "Project Started",
+  "description": "{{$brand.brand_name}} has started",
+  "trigger_type": "api",
+  "category": "project-started",
+  "tags": [
+    "workspace-activity",
+    "recip:project-manager",
+    "recip:team-member",
+    "recip:project-sponsor"
+  ],
+  "is_enabled": true,
+  "conditions": [
+    {
+      "type": "expression_v1",
+      "expression_v1": {
+        "op": "AND",
+        "args": [
+          {
+            "op": "CONTAINS",
+            "value": "$recipient.subscription.role",
+            "variable": "properties.role",
+            "variable_ns": "$category"
+          },
+          {
+            "op": "NOT_CONTAINS",
+            "value": "$recipient.distinct_id",
+            "variable": "properties.except",
+            "variable_ns": "$category"
+          }
+        ]
+      }
+    },
+    {
+      "type": "expression_v1",
+      "expression_v1": {
+        "op": "AND",
+        "args": [
+          {
+            "op": "CONTAINS",
+            "value": "$recipient.distinct_id",
+            "variable": "properties.include",
+            "variable_ns": "$category"
+          }
+        ]
+      }
+    },
+    {
+      "type": "expression_v1",
+      "expression_v1": {
+        "op": "AND",
+        "args": [
+          {
+            "op": "==",
+            "value": "\"object\"",
+            "variable": "$type",
+            "variable_ns": "$recipient"
+          }
+        ]
+      }
+    },
+    {
+      "type": "expression_v1",
+      "expression_v1": {
+        "op": "AND",
+        "args": [
+          {
+            "op": "CONTAINS",
+            "value": "$recipient.subscription.role",
+            "variable": "properties.role",
+            "variable_ns": "$category"
+          },
+          {
+            "op": "EMPTY",
+            "value": "",
+            "variable": "properties.except",
+            "variable_ns": "$category"
+          }
+        ]
+      }
+    }
+  ],
+  "tree": {
+    "nodes": [
+      {
+        "ref": "send",
+        "name": "Send",
+        "node_type": "send_multi_channel",
+        "properties": {
+          "template": "project-started"
+        }
+      }
+    ]
+  }
+}

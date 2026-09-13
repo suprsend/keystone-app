@@ -1,0 +1,16 @@
+{
+  "slug": "task-completed",
+  "name": "Task Completed",
+  "enabled_channels": [
+    "email",
+    "inbox"
+  ],
+  "variant_order": {
+    "email": [
+      "default"
+    ],
+    "inbox": [
+      "default"
+    ]
+  }
+}

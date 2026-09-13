@@ -1,0 +1,18 @@
+{
+  "actor_distinct_id": null,
+  "actor_object": null,
+  "actor_sub_type": "user",
+  "is_batch": false,
+  "batch_count": 1,
+  "payload": {
+    "task_name": "Submit gate deliverables",
+    "task_id": "TASK-501",
+    "due_date": "2026-07-15T17:00:00Z",
+    "due_date_display": "Jul 15, 2026",
+    "project_link": "https://app.keystone.example/projects/demo"
+  },
+  "recipient_distinct_id": "u_dana_carter",
+  "recipient_object": null,
+  "recipient_sub_type": "user",
+  "tenant_id": "acme-aero"
+}

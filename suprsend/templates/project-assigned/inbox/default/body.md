@@ -1,0 +1,1 @@
+{{#compare $recipient.subscription.role '==' "Project Manager"}}You are now the project manager for {{$brand.brand_name}}.{{else}}The new project manager for {{$brand.brand_name}} is {{new_pm_name}}.{{/compare}}

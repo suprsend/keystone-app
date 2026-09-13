@@ -1,0 +1,16 @@
+{
+  "slug": "project-assigned",
+  "name": "Project Assigned",
+  "enabled_channels": [
+    "email",
+    "inbox"
+  ],
+  "variant_order": {
+    "email": [
+      "default"
+    ],
+    "inbox": [
+      "default"
+    ]
+  }
+}

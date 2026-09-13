@@ -1,0 +1,561 @@
+{
+  "$schema": "https://schema.suprsend.com/preference_category/v1/schema.json",
+  "root_categories": [
+    {
+      "root_category": "system",
+      "sections": []
+    },
+    {
+      "root_category": "transactional",
+      "sections": [
+        {
+          "name": "Assignments",
+          "categories": [
+            {
+              "category": "project-assigned",
+              "name": "Project Assigned",
+              "description": "When a project manager is assigned or changed.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Project Manager",
+                    "Process Owner"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Project status",
+          "categories": [
+            {
+              "category": "project-started",
+              "name": "Project Started",
+              "description": "When a project's status is set to in-flight.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Project Manager",
+                    "Team Member",
+                    "Project Sponsor"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ]
+            },
+            {
+              "category": "project-paused",
+              "name": "Project Paused",
+              "description": "When a project is paused.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Team Member",
+                    "Project Sponsor"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Tasks",
+          "categories": [
+            {
+              "category": "task-completed",
+              "name": "Task Completed",
+              "description": "When a task on a project is marked complete.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Project Manager"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ]
+            },
+            {
+              "category": "tasks-upcoming",
+              "name": "Tasks Coming Up",
+              "description": "When a task assigned to you is approaching its due date.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Team Member",
+                    "Project Manager"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Collaboration",
+          "categories": [
+            {
+              "category": "comment-added",
+              "name": "Comment Added",
+              "description": "When a comment is added to a project you're on.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox",
+                "slack"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Project Manager",
+                    "Team Member"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ],
+              "digest_schedule": {
+                "enabled": true,
+                "options": [
+                  {
+                    "id": "instant",
+                    "label": "Instant",
+                    "frequency": "instantly",
+                    "is_default": false
+                  },
+                  {
+                    "id": "hourly",
+                    "label": "Hourly",
+                    "frequency": "hourly",
+                    "interval": 2,
+                    "is_default": false,
+                    "time": {
+                      "edit_policy": "editable",
+                      "default_value": "18:00"
+                    }
+                  },
+                  {
+                    "id": "daily_6pm",
+                    "label": "Daily",
+                    "frequency": "daily",
+                    "interval": 1,
+                    "is_default": true,
+                    "time": {
+                      "edit_policy": "locked",
+                      "default_value": "00:00"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "category": "tagged-on-project",
+              "name": "Tagged on a Project",
+              "description": "When someone @mentions you on a project.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox",
+                "slack"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Project Manager",
+                    "Team Member",
+                    "Project Sponsor",
+                    "Process Owner"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Budget",
+          "categories": [
+            {
+              "category": "budget-alert",
+              "name": "Budget Alert",
+              "description": "When a project's cost exceeds its budget ceiling.",
+              "default_preference": "opt_in",
+              "default_opt_in_channels": [
+                "email",
+                "inbox"
+              ],
+              "properties": [
+                {
+                  "key": "role",
+                  "label": "Role",
+                  "value_type": "list_choice",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "choices": [
+                    {
+                      "label": "Project Manager",
+                      "value": "Project Manager"
+                    },
+                    {
+                      "label": "Project Sponsor",
+                      "value": "Project Sponsor"
+                    },
+                    {
+                      "label": "Process Owner",
+                      "value": "Process Owner"
+                    },
+                    {
+                      "label": "Team Member",
+                      "value": "Team Member"
+                    }
+                  ],
+                  "default_value": [
+                    "Project Manager",
+                    "Project Sponsor",
+                    "Process Owner"
+                  ]
+                },
+                {
+                  "key": "except",
+                  "label": "Except",
+                  "value_type": "list_dynamic",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "include",
+                  "label": "Always notify",
+                  "value_type": "list_dynamic",
+                  "is_optional": true,
+                  "edit_policy": "editable",
+                  "dynamic_choices_key": "workspace_users",
+                  "default_value": null
+                },
+                {
+                  "key": "cost",
+                  "label": "Cost Exceeded",
+                  "value_type": "integer",
+                  "is_optional": false,
+                  "edit_policy": "editable",
+                  "default_value": 30000
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "root_category": "promotional",
+      "sections": []
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "actor_distinct_id": null,
+  "actor_object": null,
+  "actor_sub_type": "user",
+  "is_batch": false,
+  "batch_count": 1,
+  "payload": {
+    "cost": 45000,
+    "project_link": "https://app.keystone.example/projects/demo"
+  },
+  "recipient_distinct_id": "u_dana_carter",
+  "recipient_object": null,
+  "recipient_sub_type": "user",
+  "tenant_id": "acme-aero"
+}

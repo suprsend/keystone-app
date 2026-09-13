@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.suprsend.com/template/v2/variant_schema.json",
+  "id": "default",
+  "locale": "en",
+  "tenant_id": null,
+  "conditions": [],
+  "channel": "inbox",
+  "content": {
+    "$schema": "https://schema.suprsend.com/template/v2/channel/inbox_schema.json",
+    "templating_language": "handlebars",
+    "schema_version": "1.0",
+    "header": "Budget exceeded: {{$brand.brand_name}}",
+    "body": "@body.md",
+    "action_url": "",
+    "open_in_new_tab": false,
+    "image_url": "",
+    "subtext": null,
+    "importance": "default",
+    "avatar": null,
+    "tags": [],
+    "is_expiry_enabled": false,
+    "expiry": null,
+    "is_pinned": false,
+    "buttons": [],
+    "extra_data": ""
+  }
+}
