@@ -45,7 +45,7 @@ export interface NotificationDef {
 // ── The eight system notification defaults ───────────────────────────────────
 const DEFAULTS: NotificationDef[] = [
   // NOTE: the live template renders per-recipient copy keyed on the reader's
-  // per-project role — see scripts/provision.mjs. The body below is just the
+  // per-project role — see suprsend/templates/. The body below is just the
   // static catalog preview.
   {
     id: "project-assigned",
@@ -183,7 +183,8 @@ export function getNotifications(ws: WorkspaceSlug): NotificationDef[] {
 /**
  * The SuprSend preference-category slug for a notification name. SuprSend derives
  * category slugs from the NAME (e.g. "Tasks Coming Up" → "tasks-coming-up",
- * "Tagged on a Project" → "tagged-on-a-project"). Must match scripts/provision.mjs.
+ * "Tagged on a Project" → "tagged-on-a-project"). Must match the category slugs in
+ * suprsend/preference_categories/categories.json.
  */
 export function categorySlugOf(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");

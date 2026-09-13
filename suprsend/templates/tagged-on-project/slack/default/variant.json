@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.suprsend.com/template/v2/variant_schema.json",
+  "id": "default",
+  "locale": "en",
+  "tenant_id": null,
+  "conditions": [],
+  "channel": "slack",
+  "content": {
+    "$schema": "https://schema.suprsend.com/template/v2/channel/slack_schema.json",
+    "templating_language": "handlebars",
+    "body_type": "block",
+    "body_text": "",
+    "body_block": "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"*\" + data[\"actor_name\"] + \"* tagged you on *\" + data[\"$brand\"][\"brand_name\"] + \"*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"“\" + data[\"comment_body\"] + \"”\"}},{\"type\":\"actions\",\"elements\":[{\"type\":\"button\",\"text\":{\"type\":\"plain_text\",\"text\":\"Open in Keystone\"},\"url\":data[\"project_link\"]}]}]}"
+  }
+}

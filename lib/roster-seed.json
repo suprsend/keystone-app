@@ -1,5 +1,5 @@
 {
-  "_comment": "Sample seed data — a real deployment reads people from its own DB and syncs them to SuprSend via the script (scripts/provision.mjs). Single source of truth for the demo roster: consumed by lib/people.ts (the app) and scripts/provision.mjs (provisioning). Keep ids/names/roles here; email addresses are DERIVED from the name (safe plus-address) by each consumer, so they aren't stored. Person order per project is significant — keep it stable.",
+  "_comment": "Sample seed data — a real deployment reads people from its own DB and syncs them to SuprSend via the script (scripts/seed.mjs). Single source of truth for the demo roster: consumed by lib/people.ts (the app) and scripts/seed.mjs (seeding). Keep ids/names/roles here; email addresses are DERIVED from the name (safe plus-address) by each consumer, so they aren't stored. Person order per project is significant — keep it stable.",
   "roster": {
     "acme-aero": [
       { "id": "u_dana_carter", "name": "Dana Carter", "role": "Project Manager" },

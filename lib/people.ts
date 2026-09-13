@@ -5,7 +5,7 @@
 //
 // Sample seed data — a real deployment reads people from its own DB and syncs them
 // to SuprSend via the script. The ids/names/roles live in lib/roster-seed.json
-// (shared with scripts/provision.mjs so the app and provisioning never diverge);
+// (shared with scripts/seed.mjs so the app and seeding never diverge);
 // emails are derived here from the name.
 //
 // EMAIL SAFETY — READ THIS:
@@ -31,7 +31,7 @@ export interface Person {
 const mail = testEmail;
 
 // Safe local-part derived from the name (e.g. "Dana Carter" → "dana.carter"),
-// matching the derivation in scripts/provision.mjs so both produce identical emails.
+// matching the derivation in scripts/seed.mjs so both produce identical emails.
 const localFromName = (name: string) => name.toLowerCase().replace(/\s+/g, ".");
 
 // The shared seed carries only ids/names/roles (JSON widens role to string).

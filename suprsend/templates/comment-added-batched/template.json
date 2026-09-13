@@ -1,0 +1,20 @@
+{
+  "slug": "comment-added-batched",
+  "name": "Comment Added (batched)",
+  "enabled_channels": [
+    "email",
+    "inbox",
+    "slack"
+  ],
+  "variant_order": {
+    "email": [
+      "default"
+    ],
+    "inbox": [
+      "default"
+    ],
+    "slack": [
+      "default"
+    ]
+  }
+}

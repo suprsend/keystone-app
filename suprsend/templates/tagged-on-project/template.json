@@ -1,0 +1,20 @@
+{
+  "slug": "tagged-on-project",
+  "name": "Tagged on a Project",
+  "enabled_channels": [
+    "email",
+    "inbox",
+    "slack"
+  ],
+  "variant_order": {
+    "email": [
+      "default"
+    ],
+    "inbox": [
+      "default"
+    ],
+    "slack": [
+      "default"
+    ]
+  }
+}
