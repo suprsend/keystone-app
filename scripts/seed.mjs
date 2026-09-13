@@ -146,14 +146,22 @@ async function createWorkspaces() {
   };
 
   // Read existing .env.local — only ADD vars that are missing (idempotent; never
-  // clobber, and never re-create a credential we already hold).
+  // clobber a non-empty value, and never re-create a credential we already hold).
   const envPath = new URL("../.env.local", import.meta.url);
-  const existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
-  const have = new Set(
+  let existing = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";
+  const envValue = new Map(
     existing.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#") && l.includes("="))
-      .map((l) => l.slice(0, l.indexOf("=")).trim()).filter(Boolean),
+      .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]),
   );
+  const have = new Set(envValue.keys());
   const out = []; // lines to append to .env.local
+  let filled = 0; // in-place fills of previously empty vars
+  // Fill a var IN PLACE when its line exists but is empty (`KEY=`). Used for the
+  // workspace key, which the API gives us — everything else stays a manual paste.
+  const fillInPlace = (key, value) => {
+    existing = existing.replace(new RegExp(`^(${key}=)\\s*$`, "m"), `$1${value}`);
+    envValue.set(key, value);
+  };
 
   for (const ws of WORKSPACES) {
     const name = ws.defaultBrand?.name || ws.slug;
@@ -187,7 +195,6 @@ async function createWorkspaces() {
     if (!record.slug) { console.log(`  ✗ workspace resolved but has no slug: ${JSON.stringify(record).slice(0, 300)}`); continue; }
     const slug = record.slug;
     console.log(`  ✓ workspace ${how} — uid=${record.uid} slug=${slug} mode=${record.mode}`);
-    out.push(`\n# ── ${name} — uid=${record.uid} slug=${slug} mode=${record.mode} ──`);
 
     // Scaffold every credential this workspace needs, for YOU to paste from the
     // dashboard (Developers → API Keys). No API auto-creation — you copy the exact
@@ -195,20 +202,36 @@ async function createWorkspaces() {
     // clobbered). NOTE on the signing key: SIGNING_KEY_UID must be the "Signing Key UID"
     // (signing_key_…), NOT the "Signing Key ID" (ws_signk_…) — that's the value the
     // embedded editor's JWT `kid` requires (verified: uid → 200, id → 401).
+    // The Workspace Key is the workspace UID the API just returned (the dashboard's
+    // "Workspace Key" field shows the same value), so it's auto-filled. The other
+    // four can't be: the secret and the signing-key Base64 are shown ONCE in the
+    // dashboard and never returned by any API, and the public key / signing-key UID
+    // live only in the dashboard's key sections.
+    const keyVar = `${p}_WORKSPACE_KEY`;
+    if (envValue.get(keyVar) === "") {
+      if (DRY_RUN) console.log(`  [dry-run] would fill ${keyVar}=${record.uid}`);
+      else {
+        fillInPlace(keyVar, record.uid);
+        filled += 1;
+        console.log(`  ✓ filled ${keyVar} (= workspace UID)`);
+      }
+    }
     const creds = [
-      [`${p}_WORKSPACE_KEY`, `# Workspace Key      — "Workspace Key and Secret" section`],
-      [`${p}_WORKSPACE_SECRET`, `# Workspace Secret   — same section (shown once)`],
-      [`${pub}_PUBLIC_KEY`, `# Public Key         — "Public Keys" section (the SS.PUBK… value)`],
-      [`${p}_SIGNING_KEY_UID`, `# Signing Key UID    — "Signing Keys" → the "signing_key_…" UID (NOT ws_signk_…)`],
-      [`${p}_SIGNING_KEY_B64`, `# Signing Key Base64 — "Signing Keys" → Generate → copy the Base64 (shown once)`],
+      [keyVar, `# Workspace Key      — auto-filled (= the workspace UID)`, record.uid],
+      [`${p}_WORKSPACE_SECRET`, `# Workspace Secret   — "Workspace Key and Secret" section (shown once)`, ""],
+      [`${pub}_PUBLIC_KEY`, `# Public Key         — "Public Keys" section (the SS.PUBK… value)`, ""],
+      [`${p}_SIGNING_KEY_UID`, `# Signing Key UID    — "Signing Keys" → the "signing_key_…" UID (NOT ws_signk_…)`, ""],
+      [`${p}_SIGNING_KEY_B64`, `# Signing Key Base64 — "Signing Keys" → Generate → copy the Base64 (shown once)`, ""],
     ];
     const missing = creds.filter(([k]) => !have.has(k));
     if (missing.length === 0) {
-      console.log(`  • all credentials already set — skipped`);
+      console.log(`  • all credential lines already present — nothing appended`);
     } else {
+      out.push(`\n# ── ${name} — uid=${record.uid} slug=${slug} mode=${record.mode} ──`);
       out.push(`# Paste these from SuprSend → "${name}" → Developers → API Keys:`);
-      for (const [k, note] of missing) out.push(note, `${k}=`);
-      console.log(`  → wrote ${missing.length} credential placeholder(s) — paste them from the dashboard`);
+      for (const [k, note, value] of missing) out.push(note, `${k}=${value}`);
+      const toPaste = missing.filter(([, , v]) => v === "").length;
+      console.log(`  → wrote ${missing.length} credential line(s) — ${toPaste} left to paste from the dashboard`);
     }
   }
 
@@ -217,19 +240,20 @@ async function createWorkspaces() {
 
   if (out.length && DRY_RUN) {
     console.log(`\n  [dry-run] would append ${out.length} line(s) to .env.local`);
-  } else if (out.length) {
+  } else if (out.length || filled > 0) {
     const sep = existing && !existing.endsWith("\n") ? "\n" : "";
-    writeFileSync(envPath, existing + sep + out.join("\n") + "\n");
-    console.log(`\n✓ Updated .env.local (existing values untouched).`);
+    writeFileSync(envPath, existing + (out.length ? sep + out.join("\n") + "\n" : ""));
+    console.log(`\n✓ Updated .env.local (non-empty values untouched).`);
   } else {
     console.log(`\n✓ .env.local already has every credential — nothing to do.`);
   }
 
   console.log(
     "\nNext steps:\n" +
-    "  1. Open .env.local and paste each workspace's 5 credentials from the dashboard\n" +
-    "     (SuprSend → the workspace → Developers → API Keys). Each blank line has a\n" +
-    "     comment above it saying exactly which value to copy.\n" +
+    "  1. Open .env.local and paste each workspace's 4 remaining credentials from the\n" +
+    "     dashboard (SuprSend → the workspace → Developers → API Keys). Each blank line\n" +
+    "     has a comment above it saying exactly which value to copy. (The Workspace Key\n" +
+    "     is already filled in — it's the workspace UID.)\n" +
     "  2. Push the notification assets:  npm run push:assets\n" +
     "  3. Seed the demo data:            node --env-file=.env.local scripts/seed.mjs\n" +
     "  4. Run the app:                   npm run dev",
