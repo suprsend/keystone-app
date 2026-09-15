@@ -332,18 +332,24 @@ Everyone in the workspace and how many projects each person is on. Calls `/api/p
 
 ---
 
-## Repository layout
+## Folder structure
 
 ```
-app/admin      Administer screens
-app/project    Projects list and project page
-app/workspace  Resource Pool
-app/api        API routes; every call that needs a secret runs here
-lib/server     Server-only SuprSend access (Node SDK, Management API, signed Hub REST)
-lib            Shared helpers: workspace keys, project-role rules, preference mapping
-components     UI, grouped by screen
-suprsend/      Categories, templates, and workflows in the SuprSend CLI layout
-scripts/       create-workspaces.mjs, push-assets.mjs
+app/
+  admin/          Administer screens (preferences, templates, brand, logs)
+  project/        Projects list and project page
+  workspace/      Resource Pool
+  gate/           Password page for a shared demo
+  api/            Route handlers; the only place that calls SuprSend with a secret
+components/       Client components, grouped by screen, plus shared UI
+lib/
+  server/         Server-only SuprSend access (Node SDK, Management API, signed Hub REST)
+  roles.ts        Project-role rules (one Project Manager, single-holder roles)
+  workspaces.ts   Finds workspaces from the keys in the env
+scripts/          Workspace creation (create-workspaces.mjs) + asset push (push-assets.mjs)
+suprsend/         Preference categories, templates and workflows in the SuprSend CLI layout
+docs/             Screen-by-screen API list
+proxy.ts          Password gate for a shared demo (DEMO_PASSWORD)
 ```
 
 ## Scripts
@@ -355,6 +361,22 @@ scripts/       create-workspaces.mjs, push-assets.mjs
 | `npm run lint` / `typecheck` / `test` | ESLint / TypeScript / Vitest |
 | `npm run create-workspaces` | Create Acme and Globex and fill their Workspace Keys. `-- --dry-run` to preview |
 | `npm run push:assets` | Push `suprsend/` to both workspaces. `-- --dry-run` to preview, `-- --draft` to save without publishing |
+
+## Dry run or normal run
+
+`--dry-run` shows what a command would do and changes nothing. Add it after `--`, e.g.
+`npm run push:assets -- --dry-run`.
+
+| Command | Dry run when | Normal run when |
+|---|---|---|
+| `npm run create-workspaces` | You're not sure whether Acme and Globex already exist, or what it will add to `.env.local` | First-time setup. Running it again is safe: it reuses existing workspaces and only adds missing lines |
+| `npm run push:assets` | The workspaces are already set up or shared with others | First-time setup, or you want SuprSend to match the repo files |
+
+**Pushing again overwrites templates.** Edits made in the SuprSend editor are replaced by the repo files.
+Pull them first with `npx suprsend template pull -w acme`, then push. To stage changes without
+publishing, use `-- --draft`.
+
+**Rule of thumb:** fresh setup, run normally. Anything already set up, dry run first.
 
 ## License
 
