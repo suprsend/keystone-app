@@ -21,6 +21,8 @@ export async function GET(req: Request) {
     const ws = await getActiveWorkspace();
     const tParam = new URL(req.url).searchParams.get("tenant");
     const tenant = tParam || (await getActiveTenant());
+    // No project in this workspace yet → nothing to override.
+    if (!tenant) return NextResponse.json({ ok: true, extras: [] });
     const cats = await getTenantCategoryPrefs(ws.slug, tenant);
     const extras = await Promise.all(cats.map((c) => getTenantPrefExtras(ws.slug, tenant, c.category)));
     return NextResponse.json({ ok: true, extras });

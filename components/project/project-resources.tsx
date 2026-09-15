@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Users, UserPlus, Trash2, ChevronDown } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { avatarColor, initials } from "@/lib/people";
+import { FORMAL_ROLES, PROJECT_MANAGER, SINGLE_ROLES, TEAM_MEMBER } from "@/lib/roles";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ interface Candidate {
 export function ProjectResources() {
   const { tenant, actorRole, refreshUsers } = useAppState();
   const isAdmin = actorRole === "Admin";
-  const canManage = isAdmin || actorRole === "Project Manager";
+  const canManage = isAdmin || actorRole === PROJECT_MANAGER;
   return <Body key={tenant} canManage={canManage} isAdmin={isAdmin} refreshUsers={refreshUsers} />;
 }
 
@@ -108,7 +109,7 @@ function Body({ canManage, isAdmin, refreshUsers }: { canManage: boolean; isAdmi
         fetch("/api/admin/project-members", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ distinctId, role: "Team Member" }),
+          body: JSON.stringify({ distinctId, role: TEAM_MEMBER }),
         }),
       "Couldn’t add member",
     );
@@ -140,7 +141,7 @@ function Body({ canManage, isAdmin, refreshUsers }: { canManage: boolean; isAdmi
       }
       return ok;
     }
-    if (currentHolderId) return setRole(currentHolderId, "Team Member");
+    if (currentHolderId) return setRole(currentHolderId, TEAM_MEMBER);
   };
   const remove = (distinctId: string) =>
     mutate(
@@ -159,11 +160,11 @@ function Body({ canManage, isAdmin, refreshUsers }: { canManage: boolean; isAdmi
   }
 
   const holder = (role: string) => members.find((m) => m.role === role) ?? null;
-  const team = members.filter((m) => m.role === "Team Member");
+  const team = members.filter((m) => m.role === TEAM_MEMBER);
   // "Others" = object subscribers who aren't a single-role holder or Team Member —
   // watchers (CC) and blank-role subscribers. READ-ONLY here: who they receive (the
   // per-category recipient targeting) is managed in Notification settings, not here.
-  const others = members.filter((m) => !ROLE_BUCKETS.includes(m.role ?? ""));
+  const others = members.filter((m) => !FORMAL_ROLES.includes(m.role ?? ""));
   // Slot picker options = the WHOLE customer pool (members + everyone else in this
   // customer) — assign anyone to a role directly, no "add as Team Member first" step.
   const poolOptions = [...members, ...candidates]
@@ -174,13 +175,13 @@ function Body({ canManage, isAdmin, refreshUsers }: { canManage: boolean; isAdmi
     <div className="space-y-6">
       {/* Single-occupancy roles — each its own headed section, matching Team Members:
           the role is the heading, then a card with the one holder + a Change action. */}
-      {SINGLE_SLOTS.map((slot) => {
-        const h = holder(slot.role);
-        // Reassigning the PM is an Admin action; the PM can't change her own role.
-        const editable = slot.role === "Project Manager" ? isAdmin : canManage;
+      {SINGLE_ROLES.map((role) => {
+        const h = holder(role);
+        // Reassigning the PM is an Admin action; the PM can't change their own role.
+        const editable = role === PROJECT_MANAGER ? isAdmin : canManage;
         return (
-          <div key={slot.role}>
-            <h3 className="mb-2 text-sm font-semibold">{slot.role}</h3>
+          <div key={role}>
+            <h3 className="mb-2 text-sm font-semibold">{role}</h3>
             <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex items-center gap-2.5">
@@ -202,7 +203,7 @@ function Body({ canManage, isAdmin, refreshUsers }: { canManage: boolean; isAdmi
                   <PersonSlotPicker
                     value={h?.distinctId ?? ""}
                     options={poolOptions}
-                    onChange={(idv) => setSlot(slot.role, idv, h?.distinctId ?? null)}
+                    onChange={(idv) => setSlot(role, idv, h?.distinctId ?? null)}
                     trigger={
                       <Button size="sm" variant="outline" disabled={busy} className="gap-1">
                         {h ? "Change" : "Assign"}
@@ -321,13 +322,3 @@ function Body({ canManage, isAdmin, refreshUsers }: { canManage: boolean; isAdmi
     </div>
   );
 }
-
-// Single-occupancy roles, in display order.
-const SINGLE_SLOTS = [
-  { role: "Project Manager" },
-  { role: "Process Owner" },
-  { role: "Project Sponsor" },
-];
-
-// Roles that have their own section above; anything else (Watcher, blank) → "Others".
-const ROLE_BUCKETS = ["Project Manager", "Process Owner", "Project Sponsor", "Team Member"];

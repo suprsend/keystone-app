@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, projectLink } from "@/lib/server/http";
 import { getActiveWorkspace, getActiveTenant } from "@/lib/server/workspace";
 import { getProjectCost, setProjectCost } from "@/lib/server/users";
 import { triggerObjectWorkflow } from "@/lib/server/hub";
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     // PM/Sponsor/Process Owner) — the app only supplies the cost; no recipient logic.
     await triggerObjectWorkflow(
       ws,
-      { workflow: "budget-alert", objectType: "project", objectId: projectId, data: { cost: n, project_link: `https://app.keystone.com/projects/${projectId}` } },
+      { workflow: "budget-alert", objectType: "project", objectId: projectId, data: { cost: n, project_link: projectLink(req, projectId) } },
       projectId,
     ).catch(() => {});
     return NextResponse.json({ ok: true, cost: n });

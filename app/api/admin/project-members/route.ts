@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { Workspace } from "@/lib/workspaces";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, projectLink } from "@/lib/server/http";
 import { getActiveWorkspace, getActiveTenant } from "@/lib/server/workspace";
 import { triggerObjectWorkflow } from "@/lib/server/hub";
 import {
@@ -8,20 +8,16 @@ import {
   getProjectSubscribers,
   unsubscribeUserFromProject,
   assignProjectRole,
-  upsertUser,
-  addToAllEmployeesList,
 } from "@/lib/server/users";
 import { getTenantPrefExtras } from "@/lib/server/tenant-prefs";
-import { safeEmail } from "@/lib/safe-email";
-
-const PM_ROLE = "Project Manager";
+import { PROJECT_MANAGER } from "@/lib/roles";
 
 // Fire Project Assigned when a project's PM changes — as an OBJECT trigger. SuprSend
 // fans out to the project's subscribers from the object's CURRENT state, so there's no
 // recipient resolution in the app: we assign the new PM on the object and pass the new
 // PM's name as one delta. The template branches on the recipient's role; narrowing to
 // PM + Process Owner is the preference-conditions layer.
-async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: string) {
+async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: string, link: string) {
   const users = await listUsers(ws);
   const newPmName = users.find((u) => u.distinctId === newPmId)?.name ?? newPmId;
   await triggerObjectWorkflow(
@@ -32,7 +28,7 @@ async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: strin
       objectId: tenant,
       data: {
         project_id: tenant,
-        project_link: `https://app.keystone.com/projects/${tenant}`,
+        project_link: link,
         new_pm_name: newPmName,
         except: (await getTenantPrefExtras(ws.slug, tenant, "project-assigned").catch(() => ({ except: [] as string[] }))).except ?? [],
       },
@@ -41,13 +37,10 @@ async function fireProjectAssigned(ws: Workspace, tenant: string, newPmId: strin
   ).catch(() => {});
 }
 
-// EMAIL SAFETY: a demo user's email is plus-addressed to the one safe inbox so it
-// can't reach real people. Policy lives in lib/safe-email.ts (configurable via
-// SAFE_TEST_EMAIL_USER / _DOMAIN).
-
 // Project membership = subscriptions on the project OBJECT (the SuprSend source of
 // truth). Admin/PM add / remove / change-role here, and it writes straight to the
-// object — so Resources, role-gating and recipient resolution all follow.
+// object — so Resources, role-gating and recipient resolution all follow. People are
+// existing SuprSend users; this route never creates one.
 export async function GET(req: Request) {
   try {
     const ws = await getActiveWorkspace();
@@ -56,8 +49,12 @@ export async function GET(req: Request) {
     const tParam = new URL(req.url).searchParams.get("tenant");
     const tenant = tParam || (await getActiveTenant());
     // ALL object subscribers (incl. role-less "Others"/watchers), so they show as
-    // members here rather than leaking into the add-candidates list.
-    const [allRaw, roles] = await Promise.all([listUsers(ws), getProjectSubscribers(ws, tenant)]);
+    // members here rather than leaking into the add-candidates list. No project yet →
+    // everyone in the workspace is a candidate.
+    const [allRaw, roles] = await Promise.all([
+      listUsers(ws),
+      tenant ? getProjectSubscribers(ws, tenant) : Promise.resolve({} as Record<string, string>),
+    ]);
     // Exclude the Admin overseer sentinel — it's not a real project person.
     const all = allRaw.filter((u) => u.distinctId !== "admin");
     const memberIds = new Set(Object.keys(roles));
@@ -74,50 +71,21 @@ export async function GET(req: Request) {
   }
 }
 
-// POST adds someone to the project object. Two shapes:
-//  • { distinctId, role }   → subscribe an EXISTING workspace user (also upserts role).
-//  • { name, email?, role } → PROVISION a brand-new SuprSend user (email-safe), add to
-//    the all-employees list, then subscribe to this project with the role.
+// POST adds an existing workspace user to the project object with a role. Assigning a
+// single-occupancy role removes the previous holder from the project; a PM change
+// fires Project Assigned.
 export async function POST(req: Request) {
   try {
     const ws = await getActiveWorkspace();
     const tenant = await getActiveTenant();
-    const body = (await req.json()) as { distinctId?: string; name?: string; email?: string; role?: string; tenant?: string };
-    const role = body.role;
-    if (!role) return NextResponse.json({ ok: false, error: "role required" }, { status: 400 });
+    const body = (await req.json()) as { distinctId?: string; role?: string; tenant?: string };
+    if (!body.distinctId || !body.role) {
+      return NextResponse.json({ ok: false, error: "distinctId and role required" }, { status: 400 });
+    }
     const projectId = typeof body.tenant === "string" && body.tenant ? body.tenant : tenant;
-
-    // Existing user (from the pool) — assigning a single-occupancy role removes the
-    // previous holder from the project; a PM change fires Project Assigned.
-    if (body.distinctId) {
-      await assignProjectRole(ws, projectId, body.distinctId, role);
-      if (role === PM_ROLE) await fireProjectAssigned(ws, projectId, body.distinctId);
-      return NextResponse.json({ ok: true });
-    }
-
-    // Create a brand-new member.
-    const name = (body.name ?? "").trim();
-    if (!name) return NextResponse.json({ ok: false, error: "Name required" }, { status: 400 });
-    const em = safeEmail(body.email, name);
-    if (!em.ok) return NextResponse.json({ ok: false, error: em.error }, { status: 400 });
-
-    const distinctId = `u_${name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "")}`;
-    if (!distinctId || distinctId === "u_") {
-      return NextResponse.json({ ok: false, error: "Name must contain letters or numbers" }, { status: 400 });
-    }
-
-    // Provision the SuprSend user (email-safe + Slack), join the all-employees list,
-    // then assign the role on the project object (removing any current holder of a
-    // single-occupancy role); a new PM fires Project Assigned.
-    await upsertUser(ws, distinctId, {
-      name,
-      email: em.email,
-      role,
-    });
-    await addToAllEmployeesList(ws, distinctId).catch(() => {});
-    await assignProjectRole(ws, projectId, distinctId, role);
-    if (role === PM_ROLE) await fireProjectAssigned(ws, projectId, distinctId);
-    return NextResponse.json({ ok: true, distinctId, email: em.email });
+    await assignProjectRole(ws, projectId, body.distinctId, body.role);
+    if (body.role === PROJECT_MANAGER) await fireProjectAssigned(ws, projectId, body.distinctId, projectLink(req, projectId));
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: errMsg(e) }, { status: 500 });
   }
@@ -136,7 +104,7 @@ export async function PATCH(req: Request) {
     }
     const projectId = typeof tenant === "string" && tenant ? tenant : active;
     await assignProjectRole(ws, projectId, distinctId, role);
-    if (role === PM_ROLE) await fireProjectAssigned(ws, projectId, distinctId);
+    if (role === PROJECT_MANAGER) await fireProjectAssigned(ws, projectId, distinctId, projectLink(req, projectId));
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: errMsg(e) }, { status: 500 });

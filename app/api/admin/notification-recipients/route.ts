@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { errMsg } from "@/lib/server/http";
 import { getActiveWorkspace } from "@/lib/server/workspace";
-import type { PersonRole } from "@/lib/people";
 import { getNotifConfig, setWorkflowRecipients } from "@/lib/server/notif-recipients";
-import { saveCategoryRoles } from "@/lib/server/preference-config";
+import { getRoleOptions, saveCategoryRoles } from "@/lib/server/preference-config";
 
 // Read/update a notification's recipient roles (recipient TYPES). Stored as
 // `recip:<role>` tags on the live SuprSend workflow, so edits persist and drive
@@ -12,10 +11,11 @@ export async function GET(req: Request) {
   try {
     const ws = await getActiveWorkspace();
     const slug = new URL(req.url).searchParams.get("slug");
-    const cfg = await getNotifConfig(ws.slug);
-    // No slug → return every notification's config (slug + category + roles), so the
-    // project-settings table can show/edit recipients keyed by category.
-    if (!slug) return NextResponse.json({ ok: true, configs: cfg });
+    const roleOptions = await getRoleOptions(ws.slug);
+    const cfg = await getNotifConfig(ws.slug, roleOptions);
+    // No slug → return every notification's config (slug + category + roles) and the
+    // roles a notification can target, so the settings tables can show/edit recipients.
+    if (!slug) return NextResponse.json({ ok: true, configs: cfg, roleOptions });
     const found = cfg.find((c) => c.slug === slug);
     return NextResponse.json({ ok: true, roles: found?.roles ?? [], emails: found?.emails ?? [], live: Boolean(found) });
   } catch (e) {
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const ws = await getActiveWorkspace();
     const { slug, roles, emails, category } = (await req.json()) as {
       slug: string;
-      roles: PersonRole[];
+      roles: string[];
       emails?: string[];
       category?: string;
     };

@@ -3,8 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { AppProviders } from "@/components/providers";
-import { getDefaultTenant, isTenantOfWorkspace, type TenantId } from "@/lib/tenants";
-import { DEFAULT_WORKSPACE, isWorkspaceSlug, type WorkspaceSlug } from "@/lib/workspaces";
+import { listWorkspaces } from "@/lib/server/workspace";
 
 // Neutral product chrome set in Geist (matches the clean reference look).
 // Mono (template slugs, ids) stays Geist Mono.
@@ -21,15 +20,14 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const store = await cookies();
 
+  // Workspaces are read live from SuprSend. A failure here is shown by WorkspaceGuard.
+  const workspaces = await listWorkspaces().catch(() => []);
   const cookieWs = store.get("ws")?.value;
-  const initialWorkspace: WorkspaceSlug = isWorkspaceSlug(cookieWs) ? cookieWs : DEFAULT_WORKSPACE;
+  const initialWorkspace = (workspaces.find((w) => w.slug === cookieWs) ?? workspaces[0])?.slug ?? "";
 
-  // The project (tenant) must belong to the active workspace; otherwise fall back
-  // to that workspace's first project.
-  const cookieTenant = store.get("tenant")?.value;
-  const initialTenant: TenantId = isTenantOfWorkspace(initialWorkspace, cookieTenant)
-    ? (cookieTenant as TenantId)
-    : getDefaultTenant(initialWorkspace).id;
+  // The project cookie only counts for the workspace it was set in. The client checks
+  // it against the live project list and moves to a real project (or none).
+  const initialTenant = cookieWs === initialWorkspace ? (store.get("tenant")?.value ?? "") : "";
 
   // Seed the actor from the cookie. Default to the Admin overseer ("admin"
   // sentinel) so the app opens in the Administer/Manage context with the full
@@ -44,6 +42,7 @@ export default async function RootLayout({
     >
       <body className="bg-background text-foreground min-h-full">
         <AppProviders
+          workspaces={workspaces}
           initialWorkspace={initialWorkspace}
           initialTenant={initialTenant}
           initialActor={initialActor}

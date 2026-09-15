@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, projectLink } from "@/lib/server/http";
 import { getActiveWorkspace, getActiveTenant } from "@/lib/server/workspace";
 import { triggerObjectWorkflow, trackEvent } from "@/lib/server/hub";
 import { listUsers, getProjectRoles } from "@/lib/server/users";
 import { getTasks, addTask, setTaskStatus, TASK_STATUSES } from "@/lib/server/project-content";
 import { getTenantPrefExtras } from "@/lib/server/tenant-prefs";
+import { PROJECT_MANAGER } from "@/lib/roles";
 
 // Excluded distinct_ids (the "Except" condition) passed in the trigger data so the
 // workflow's condition node can filter them out. Fetched per preference category.
@@ -13,7 +14,6 @@ async function exceptOf(ws: import("@/lib/workspaces").WorkspaceSlug, tenant: st
   return (await getTenantPrefExtras(ws, tenant, category).catch(() => ({ except: [] as string[] }))).except ?? [];
 }
 
-const PM_ROLE = "Project Manager";
 // tasks-upcoming is an EVENT-triggered workflow (not api) — adding a task emits this
 // event for the assignee; the workflow's wait-until schedules the reminder. Completing
 // emits TASK_CLOSED, which the wait-until matches (by task_id) to cancel the reminder.
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       TASKS_UPCOMING_EVENT,
       {
         project_id: tenant,
-        project_link: `https://app.keystone.com/projects/${tenant}`,
+        project_link: projectLink(req, tenant),
         task_id: task.id,
         task_name: name,
         due_date: dueDateIso,
@@ -111,7 +111,7 @@ export async function PATCH(req: Request) {
     if (!task) return NextResponse.json({ ok: false, error: "Task not found" }, { status: 404 });
 
     const actor = (await cookies()).get("actor")?.value ?? "";
-    const pmId = Object.keys(roles).find((id) => roles[id] === PM_ROLE) ?? "";
+    const pmId = Object.keys(roles).find((id) => roles[id] === PROJECT_MANAGER) ?? "";
     const isPm = actor === pmId;
     const isAdmin = actor === "admin" || actor === "";
     const isOwner = actor === task.assigneeId;
@@ -140,7 +140,7 @@ export async function PATCH(req: Request) {
           objectId: tenant,
           data: {
             project_id: tenant,
-            project_link: `https://app.keystone.com/projects/${tenant}`,
+            project_link: projectLink(req, tenant),
             task_name: task.name,
             task_assignee: users.find((u) => u.distinctId === task.assigneeId)?.name ?? task.assigneeId,
             except: await exceptOf(ws.slug, tenant, "task-completed"),

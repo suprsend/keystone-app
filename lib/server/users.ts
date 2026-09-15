@@ -1,23 +1,11 @@
-// Live employees = SuprSend subscribers (the Users tab). Backed entirely by the
-// hub user API via the node SDK — list / get / add (upsert) / remove (delete).
-// Role + name live in user `properties`; email is the `$email` channel.
+// Live people = SuprSend users, and projects = SuprSend objects, read and written via
+// the node SDK. Users are created in the SuprSend dashboard (or your own backend) —
+// the app only reads them and maps them onto projects. Name lives in user
+// `properties`; email is the `$email` channel.
 import "server-only";
 import type { Workspace } from "@/lib/workspaces";
 import { suprsendClient as client, hasWorkspaceKeys } from "@/lib/server/workspace";
-
-// Event emitted when a new employee is added. An event-triggered workflow
-// (`event-employee-onboarding`, trigger_type:"event") listens for it and fires
-// onboarding automatically — no manual Send test. SuprSend upper-cases the name.
-export const ONBOARDING_EVENT = "employee_onboarded";
-
-// A static list every employee joins on creation. Powers list-based delivery:
-// broadcasts (one template to the whole company) and list-entry triggers.
-export const ALL_EMPLOYEES_LIST = "all-employees";
-
-/** Add a user to the all-employees list (idempotent). Best-effort. */
-export async function addToAllEmployeesList(ws: Workspace, distinctId: string) {
-  return client(ws).subscriber_lists.add(ALL_EMPLOYEES_LIST, [distinctId]);
-}
+import { SINGLE_ROLES } from "@/lib/roles";
 
 export interface WorkUser {
   distinctId: string;
@@ -68,29 +56,8 @@ export async function getUser(ws: Workspace, distinctId: string): Promise<WorkUs
   }
 }
 
-/** Add or update an employee: sets email + name + role. (Slack/Teams delivery is not
- *  wired — the third channel is display-only; Keystone uses Teams, not Slack.) */
-export async function upsertUser(
-  ws: Workspace,
-  distinctId: string,
-  data: { name?: string; email?: string; role?: string },
-) {
-  const c = client(ws);
-  const edit = c.users.get_edit_instance(distinctId);
-  if (data.email) edit.add_email(data.email);
-  const props: Record<string, string> = {};
-  if (data.name) props.name = data.name;
-  if (data.role) props.role = data.role;
-  if (Object.keys(props).length) edit.set(props);
-  return c.users.edit(edit);
-}
-
-export async function removeUser(ws: Workspace, distinctId: string) {
-  return client(ws).users.delete(distinctId);
-}
-
 // The object type for projects (project = object; members subscribed with a `role`
-// property — drives object fan-out + project membership). Mirrors scripts/seed.mjs.
+// property — drives object fan-out + project membership).
 const PROJECT_OBJECT = "project";
 
 /** The projects that EXIST in this workspace — read from SuprSend (the project
@@ -158,10 +125,6 @@ export async function subscribeUserToProject(ws: Workspace, projectId: string, d
 export async function unsubscribeUserFromProject(ws: Workspace, projectId: string, distinctId: string) {
   return client(ws).objects.delete_subscriptions(PROJECT_OBJECT, projectId, { recipients: [distinctId] });
 }
-
-// Roles that exactly ONE person can hold on a project (Keystone's real model — a
-// project has a single PM, Process Owner, Sponsor). Team Member is the open role.
-export const SINGLE_ROLES = ["Project Manager", "Process Owner", "Project Sponsor"];
 
 // A project's lifecycle state. Lives as a PROPERTY ON THE PROJECT OBJECT (SuprSend),
 // not in our backend. In-flight = started, Paused, Completed. In-flight and Paused

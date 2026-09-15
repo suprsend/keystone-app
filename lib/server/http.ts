@@ -17,3 +17,8 @@ export function isSlug(value: unknown): value is string {
 }
 
 export const INVALID_SLUG = "Invalid slug — use letters, digits, hyphens and underscores.";
+
+/** Link to a project's page in this app, on whatever host is serving the request. Sent in notification payloads. */
+export function projectLink(req: Request, projectId: string): string {
+  return `${new URL(req.url).origin}/project/${encodeURIComponent(projectId)}`;
+}

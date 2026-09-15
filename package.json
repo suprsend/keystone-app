@@ -19,7 +19,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "seed": "node --env-file=.env.local scripts/seed.mjs",
+    "create-workspaces": "node --env-file=.env.local scripts/create-workspaces.mjs",
     "push:assets": "node --env-file=.env.local scripts/push-assets.mjs"
   },
   "dependencies": {

@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronRight, FolderKanban } from "lucide-react";
 import { useAppState } from "@/components/providers";
-import { getWorkspace } from "@/lib/workspaces";
 import { avatarColor, initials } from "@/lib/people";
-import { getTenant, isTenantId } from "@/lib/tenants";
+import { PROJECT_MANAGER } from "@/lib/roles";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ProjectStateControl } from "@/components/project/project-state-control";
@@ -17,9 +16,8 @@ import { ProjectStateControl } from "@/components/project/project-state-control"
 // subscriptions), scoped to the active customer. Admin sees every project; anyone
 // else sees only the projects they belong to. Only visual chrome is app-side.
 export function ProjectsListClient() {
-  const { workspace, actorId, actorRole, projects, projectsLoaded, refreshProjects } = useAppState();
+  const { activeWorkspace, actorId, actorRole, projects, projectsLoaded, refreshProjects } = useAppState();
   const router = useRouter();
-  const customer = getWorkspace(workspace);
   const isAdmin = actorRole === "Admin";
 
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -33,7 +31,7 @@ export function ProjectsListClient() {
       const res = await fetch("/api/admin/project-members", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant: tenantId, distinctId, role: "Project Manager" }),
+        body: JSON.stringify({ tenant: tenantId, distinctId, role: PROJECT_MANAGER }),
       });
       const d = await res.json().catch(() => ({}));
       if (!d.ok) {
@@ -52,14 +50,22 @@ export function ProjectsListClient() {
 
   return (
     <>
-      <PageHeader title="Projects" description={`Projects in ${customer.label}.`} />
+      <PageHeader title="Projects" description={`Projects in ${activeWorkspace?.label}.`} />
 
       {loaded && shown.length === 0 ? (
-        <EmptyState
-          icon={FolderKanban}
-          title="No projects to list"
-          description="You're not a member of any project in this customer."
-        />
+        isAdmin ? (
+          <EmptyState
+            icon={FolderKanban}
+            title="No projects yet"
+            description="Create one with + Project. It needs people to assign — add users to this workspace in the SuprSend dashboard first."
+          />
+        ) : (
+          <EmptyState
+            icon={FolderKanban}
+            title="No projects to list"
+            description="You're not a member of any project in this customer."
+          />
+        )
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
@@ -73,17 +79,10 @@ export function ProjectsListClient() {
             </thead>
             <tbody>
               {shown.map((p) => {
-                // Seeded demo projects keep their rich brand; newly-created ones fall
-                // back to the live object name + a derived colour/initial.
-                const seeded = isTenantId(p.tenantId);
-                const t = seeded ? getTenant(p.tenantId) : null;
-                const name = t?.label ?? p.label;
-                const subtitle = t ? p.label : null;
-                // New (non-seeded) projects inherit the customer's brand accent.
-                const accent = t?.accent ?? customer.accent;
-                const initial = t?.initial ?? initials(p.label);
+                // Tile colour = the customer's brand colour (Administer → Brand).
+                const accent = activeWorkspace?.accent || "var(--brand-blue)";
                 const members = p.members;
-                const pm = members.find((m) => m.role === "Project Manager") ?? null;
+                const pm = members.find((m) => m.role === PROJECT_MANAGER) ?? null;
                 return (
                   <tr
                     key={p.tenantId}
@@ -96,11 +95,10 @@ export function ProjectsListClient() {
                           className="flex size-8 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold text-white"
                           style={{ backgroundColor: accent }}
                         >
-                          {initial}
+                          {initials(p.label)}
                         </span>
                         <div className="min-w-0">
-                          <div className="truncate font-medium text-foreground">{name}</div>
-                          {subtitle && <div className="truncate text-xs text-muted-foreground">{subtitle}</div>}
+                          <div className="truncate font-medium text-foreground">{p.label}</div>
                         </div>
                       </div>
                     </td>
