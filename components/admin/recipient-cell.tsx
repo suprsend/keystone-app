@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { Plus, X, UserPlus, Search } from "lucide-react";
-import { ROLE_OPTIONS } from "@/lib/notifications";
-import { avatarColor, initials, type PersonRole } from "@/lib/people";
+import { avatarColor, initials } from "@/lib/people";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export interface Recipients {
-  roles: PersonRole[];
+  roles: string[];
   emails: string[];
 }
 
@@ -38,6 +37,7 @@ const OTHER_USER_ROLE = "Watcher";
 // level the cell is roles-only.
 export function RecipientCell({
   roles,
+  roleOptions,
   extraRoles,
   emails,
   editable,
@@ -47,8 +47,10 @@ export function RecipientCell({
   members,
   onRemoveMember,
 }: {
-  roles: PersonRole[];
-  /** Roles from `recip:` tags outside the app's role set (added in the SuprSend
+  roles: string[];
+  /** Roles that can be added — the workspace's live role options. */
+  roleOptions: string[];
+  /** Roles from `recip:` tags outside the role options (added in the SuprSend
    *  dashboard). Shown as read-only pills — the app never edits or removes them. */
   extraRoles?: string[];
   emails: string[];
@@ -63,7 +65,7 @@ export function RecipientCell({
   const [searching, setSearching] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  const available = ROLE_OPTIONS.filter((r) => !roles.includes(r));
+  const available = roleOptions.filter((r) => !roles.includes(r));
   const canAddOther = Boolean(onAddMember && candidates);
   const q = query.trim().toLowerCase();
   const filtered = (candidates ?? []).filter(

@@ -23,8 +23,8 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { useAppState } from "@/components/providers";
-import { getWorkspace } from "@/lib/workspaces";
 import { avatarColor, initials } from "@/lib/people";
+import { PROJECT_MANAGER, PROCESS_OWNER, PROJECT_SPONSOR, TEAM_MEMBER } from "@/lib/roles";
 import { PersonSlotPicker } from "@/components/project/person-slot-picker";
 
 interface Person {
@@ -34,9 +34,9 @@ interface Person {
 
 // Single-occupancy roles, in order. PM is required.
 const SINGLE = [
-  { key: "pm", role: "Project Manager", label: "Project Manager", required: true },
-  { key: "po", role: "Process Owner", label: "Process Owner", required: false },
-  { key: "sp", role: "Project Sponsor", label: "Project Sponsor", required: false },
+  { key: "pm", role: PROJECT_MANAGER, label: PROJECT_MANAGER, required: true },
+  { key: "po", role: PROCESS_OWNER, label: PROCESS_OWNER, required: false },
+  { key: "sp", role: PROJECT_SPONSOR, label: PROJECT_SPONSOR, required: false },
 ] as const;
 
 // Create a project: name + people picked from the customer's resource pool (no user
@@ -44,10 +44,11 @@ const SINGLE = [
 // as Resources (#6). The create APIs (object/tenant/subscriptions) are live.
 export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter();
-  const { workspace, refreshUsers, refreshProjects } = useAppState();
-  const customer = getWorkspace(workspace);
+  const { activeWorkspace, refreshUsers, refreshProjects } = useAppState();
+  const customer = { label: activeWorkspace?.label ?? "" };
   const [name, setName] = React.useState("");
   const [pool, setPool] = React.useState<Person[]>([]);
+  const [poolLoaded, setPoolLoaded] = React.useState(false);
   const [single, setSingle] = React.useState<Record<string, string>>({});
   const [team, setTeam] = React.useState<string[]>([]);
   const [busy, setBusy] = React.useState(false);
@@ -66,6 +67,8 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
         setPool([...map.values()].sort((a, b) => a.name.localeCompare(b.name)));
       } catch {
         /* leave empty */
+      } finally {
+        setPoolLoaded(true);
       }
     })();
   }, [open]);
@@ -89,7 +92,7 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
     }
     for (const id of team) {
       if (!used.has(id)) {
-        members.push({ distinctId: id, role: "Team Member" });
+        members.push({ distinctId: id, role: TEAM_MEMBER });
         used.add(id);
       }
     }
@@ -126,6 +129,11 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
           <DialogTitle>New project</DialogTitle>
           <DialogDescription>Creates a project in {customer.label} and adds the people you choose.</DialogDescription>
         </DialogHeader>
+        {poolLoaded && pool.length === 0 && (
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            {customer.label} has no people yet. Add users in the SuprSend dashboard, then pick a Project Manager here.
+          </div>
+        )}
         <div className="space-y-4 py-1">
           <div className="space-y-1.5">
             <Label htmlFor="np-name">Project name</Label>

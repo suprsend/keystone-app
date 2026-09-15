@@ -20,9 +20,9 @@ function BellPlaceholder() {
 
 // In-app inbox bell for the header. The inbox is personal, so the live SuprSend feed
 // only mounts for a real user. The Admin overseer has NO personal inbox — no bell is
-// shown for Admin at all.
+// shown for Admin at all. The feed is project-scoped, so no project → no bell.
 export function InboxBell() {
   const { actorId, tenant } = useAppState();
-  if (!actorId || actorId === ADMIN_ACTOR) return null;
+  if (!actorId || actorId === ADMIN_ACTOR || !tenant) return null;
   return <InboxBellMount key={`${tenant}:${actorId}`} actorId={actorId} tenant={tenant} />;
 }

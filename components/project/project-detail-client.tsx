@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Bell } from "lucide-react";
 import { useAppState } from "@/components/providers";
-import { getTenant, isTenantId, type TenantId } from "@/lib/tenants";
+import { PROJECT_MANAGER } from "@/lib/roles";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TenantDefaultsClient } from "@/components/admin/tenant-defaults-client";
@@ -23,17 +23,16 @@ const TABS: { key: string; label: string }[] = [
 
 export function ProjectDetailClient({ id }: { id: string }) {
   const { tenant, setTenant, actorRole, projects, projectsLoaded } = useAppState();
-  const canManage = actorRole === "Admin" || actorRole === "Project Manager";
+  const canManage = actorRole === "Admin" || actorRole === PROJECT_MANAGER;
   const [active, setActive] = React.useState("overview");
-  // Validate the project EXISTS live in this customer (seeded OR newly created), from
-  // the shared projects context — not the static registry — so new projects are
-  // navigable. undefined = loading, null = not found, string = the live project name.
+  // Validate the project EXISTS live in this customer, from the shared projects
+  // context. undefined = loading, null = not found, string = the live project name.
   const found = projects.find((p) => p.tenantId === id);
   const liveName: string | null | undefined = !projectsLoaded ? undefined : found ? found.label : null;
 
   // Make the URL's project the active tenant so the reused surfaces scope to it.
   React.useEffect(() => {
-    if (liveName != null && id !== tenant) setTenant(id as TenantId);
+    if (liveName != null && id !== tenant) setTenant(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, liveName]);
 
@@ -68,10 +67,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
     );
   }
 
-  // Seeded projects keep their rich metadata; new ones use the live object name.
-  const seeded = isTenantId(id);
-  const project = seeded ? getTenant(id as TenantId) : null;
-  const title = project?.fullName ?? liveName;
+  const title = liveName;
 
   return (
     <>
@@ -121,7 +117,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
 function ProjectNotifications({ tenantId }: { tenantId: string }) {
   const { actorId, actorRole, users } = useAppState();
   const isAdmin = actorRole === "Admin";
-  const isPm = actorRole === "Project Manager";
+  const isPm = actorRole === PROJECT_MANAGER;
   const canManage = isAdmin || isPm;
   const hasMine = !isAdmin;
 

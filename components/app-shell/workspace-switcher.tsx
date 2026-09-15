@@ -10,35 +10,38 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAppState } from "@/components/providers";
-import { WORKSPACES, getWorkspace, type Workspace } from "@/lib/workspaces";
+import type { WorkspaceInfo } from "@/lib/workspaces";
+import { initials } from "@/lib/people";
 import { cn } from "@/lib/utils";
 
-function Tile({ ws, className }: { ws: Workspace; className?: string }) {
+// Logo and colour come from the workspace's default brand (Administer → Brand);
+// without a logo the tile shows the workspace's initials.
+function Tile({ ws, className }: { ws: WorkspaceInfo; className?: string }) {
   return (
     <span
       className={cn(
         "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background text-[10px] font-bold",
         className,
       )}
-      style={{ color: ws.accent }}
+      style={ws.accent ? { color: ws.accent } : undefined}
     >
       {ws.logo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={ws.logo} alt="" className="size-full object-contain p-1" />
       ) : (
-        ws.initial
+        initials(ws.label)
       )}
     </span>
   );
 }
 
 export function WorkspaceSwitcher() {
-  const { workspace, setWorkspace } = useAppState();
+  const { workspaces, workspace, activeWorkspace: active, setWorkspace } = useAppState();
   const router = useRouter();
   const pathname = usePathname();
-  const active = getWorkspace(workspace);
+  if (!active) return null;
 
-  function select(slug: Workspace["slug"]) {
+  function select(slug: WorkspaceInfo["slug"]) {
     setWorkspace(slug);
     // A project detail of the old customer won't exist in the new one ("Project
     // not found"); land on the new customer's projects list instead.
@@ -55,13 +58,10 @@ export function WorkspaceSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[16rem]">
         <DropdownMenuLabel className="text-xs text-muted-foreground">Switch customer</DropdownMenuLabel>
-        {WORKSPACES.map((w) => (
+        {workspaces.map((w) => (
           <DropdownMenuItem key={w.slug} onSelect={() => select(w.slug)} className="gap-2">
             <Tile ws={w} />
-            <span className="flex flex-col">
-              <span className="text-sm font-medium leading-tight">{w.label}</span>
-              <span className="text-xs leading-tight text-muted-foreground">{w.fullName}</span>
-            </span>
+            <span className="text-sm font-medium leading-tight">{w.label}</span>
             {w.slug === workspace && <Check className="ml-auto size-4" />}
           </DropdownMenuItem>
         ))}

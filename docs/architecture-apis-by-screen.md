@@ -57,7 +57,7 @@ Static KPI tiles + funnel chart. No API.
 ### Project detail — `/project/[id]`
 Tabs: Overview · Resources · Notifications
 
-- **Resources** (`project-resources.tsx`) → `/api/admin/project-members` GET/POST/PATCH/DELETE → **Node SDK** (`objects.get_subscriptions` / `create`/`delete_subscriptions`, `users.upsert`)
+- **Resources** (`project-resources.tsx`) → `/api/admin/project-members` GET/POST/PATCH/DELETE → **Node SDK** (`objects.get_subscriptions` / `create`/`delete_subscriptions`)
 - **State control** (`project-state-control.tsx`) → `/api/admin/project-state` → **Node SDK** (state = property on project object; fires `project-started` / `project-paused` via `triggerObjectWorkflow`)
 - **Overview** (`project-overview.tsx`):
   - comments → `/api/admin/project-comments` → **Node SDK** (comments as object array prop; fires `comment-added` object fan-out, or `tagged-on-project` to the @mentioned person)
@@ -70,6 +70,7 @@ Tabs: Overview · Resources · Notifications
 
 ## Shared chrome (all screens)
 
+- **Workspace switcher** (`workspace-switcher.tsx`) → server `listWorkspaces()` → **Mgmt API** `GET v1/workspace/` (workspaces with keys in the env) + **Node SDK** `tenants.get("default")` (logo + colour)
 - **Global provider** (`providers.tsx`) → `/api/users` → **Node SDK** `listUsers` (app-wide people load)
 - **Viewing-as** (`viewing-as.tsx`) → `/api/people` → **Node SDK** (customer-scoped people, grouped by project)
 - **Inbox bell** (`inbox-bell-mount.tsx`) → browser **React SDK** `@suprsend/react` (`<Inbox>`); `/api/subscriber-token` → ES256 JWT (tenant-scoped)
@@ -78,6 +79,6 @@ Tabs: Overview · Resources · Notifications
 
 ## One-off (not a screen)
 
-- **Seeding** — `scripts/seed.mjs` → **Node SDK** (tenants/users/objects); assets in `suprsend/` push via the SuprSend CLI (`scripts/push-assets.mjs`)
+- **Workspace setup** — `scripts/create-workspaces.mjs` → **Mgmt API** (creates the workspaces, writes env placeholders); assets in `suprsend/` push via the SuprSend CLI (`scripts/push-assets.mjs`). No demo data is created: users are added in SuprSend, projects in the app.
 </content>
 </invoke>

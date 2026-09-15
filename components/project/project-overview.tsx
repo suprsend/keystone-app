@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Plus, ListTodo, MessageSquare, Wallet, Pencil } from "lucide-react";
 import { useAppState } from "@/components/providers";
 import { avatarColor, initials } from "@/lib/people";
+import { PROCESS_OWNER, PROJECT_MANAGER } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ interface Comment {
 // drive the Comment Added / Task Completed / Tasks Coming Up workflows.
 export function ProjectOverview({ id }: { id: string }) {
   const { actorId, actorRole } = useAppState();
-  const canManage = actorRole === "Admin" || actorRole === "Project Manager";
+  const canManage = actorRole === "Admin" || actorRole === PROJECT_MANAGER;
   return (
     <div className="space-y-6">
       <CommentsPanel tenant={id} actorId={actorId} />
@@ -352,10 +353,10 @@ function TasksPanel({ tenant, actorId, canManage }: { tenant: string; actorId: s
   }, [load]);
 
   const nameOf = (id: string) => members.find((m) => m.distinctId === id)?.name ?? id;
-  const pmId = members.find((m) => m.role === "Project Manager")?.distinctId;
+  const pmId = members.find((m) => m.role === PROJECT_MANAGER)?.distinctId;
   const isPm = actorId === pmId;
   // A task can be assigned to anyone on the project except the Process Owner.
-  const assignable = members.filter((m) => m.role !== "Process Owner");
+  const assignable = members.filter((m) => m.role !== PROCESS_OWNER);
 
   const setStatus = async (taskId: string, status: string) => {
     setBusy(true);

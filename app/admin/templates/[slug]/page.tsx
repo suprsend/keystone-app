@@ -1,7 +1,6 @@
 import { FileText } from "lucide-react";
 import { getActiveWorkspace, hasWorkspaceKeys } from "@/lib/server/workspace";
 import { getTemplate } from "@/lib/suprsend-mgmt";
-import { categorySlugOf, getNotification, templateSlugOf, workflowSlugOf } from "@/lib/notifications";
 import { getNotifConfig } from "@/lib/server/notif-recipients";
 import { TemplateEditorView } from "@/components/templates/template-editor-view";
 import { PageHeader } from "@/components/shared/page-header";
@@ -16,35 +15,20 @@ export default async function TemplateEditorPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug: rawSlug } = await params;
-  // A notification id may differ from its template slug (comment-added →
-  // comment-added-batched); resolve so the URL loads the real template.
-  const slug = templateSlugOf(rawSlug);
+  const { slug } = await params;
   const ws = await getActiveWorkspace();
   const meta = await getTemplate(ws.slug, slug);
   const name = meta.ok && meta.body.name ? meta.body.name : slug;
 
   // The Send-Test call requires the notification's preference CATEGORY (SuprSend
   // 400s with "category: This field is required" otherwise). The category lives on
-  // the workflow that sends this template, so resolve it from the live workflow
-  // list first — that way templates created in the SuprSend dashboard (never in
-  // this repo) get the right category too. A workflow matches when its slug equals
-  // this template's slug directly, or through the two known divergences
-  // (comment-added → comment-added-batched, task-upcoming → tasks-upcoming).
+  // the workflow that sends this template, so find the live workflow whose tree
+  // sends it — templates created in the SuprSend dashboard work the same way. No
+  // workflow sends it → no category is pre-filled.
   let category = "";
   if (hasWorkspaceKeys(ws)) {
     const configs = await getNotifConfig(ws.slug).catch(() => []);
-    const match = configs.find(
-      (c) => c.slug === rawSlug || templateSlugOf(c.slug) === slug || c.slug === workflowSlugOf(rawSlug),
-    );
-    if (match?.category) category = match.category;
-  }
-  if (!category) {
-    // No live match (or no keys): derive from the static catalog's notification
-    // NAME, falling back to the slug itself for notifications that live only on
-    // SuprSend (e.g. budget-alert, where slug == category).
-    const notif = getNotification(ws.slug, rawSlug);
-    category = notif ? categorySlugOf(notif.name) : rawSlug;
+    category = configs.find((c) => c.templates.includes(slug))?.category ?? "";
   }
 
   // The embedded editor needs live SuprSend keys. Without them, show a graceful

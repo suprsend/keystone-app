@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, projectLink } from "@/lib/server/http";
 import { getActiveWorkspace, getActiveTenant } from "@/lib/server/workspace";
 import { triggerWorkflow, triggerObjectWorkflow } from "@/lib/server/hub";
 import { listUsers, getProjectRoles } from "@/lib/server/users";
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       (await getTenantPrefExtras(ws.slug, tenant, category).catch(() => ({ except: [] as string[] }))).except ?? [];
     const payload = {
       project_id: tenant,
-      project_link: `https://app.keystone.com/projects/${tenant}`,
+      project_link: projectLink(req, tenant),
       comment_author: authorName,
       actor_name: authorName,
       comment_body: text,

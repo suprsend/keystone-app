@@ -4,7 +4,6 @@ import * as React from "react";
 import { toast } from "sonner";
 import { SlidersHorizontal } from "lucide-react";
 import type { PrefCategory, Pref } from "@/lib/server/preference-config";
-import type { PersonRole } from "@/lib/people";
 import { useAppState } from "@/components/providers";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -35,7 +34,7 @@ interface Row extends PrefCategory {
 interface RecipConfig {
   slug: string;
   category: string;
-  roles: PersonRole[];
+  roles: string[];
   /** Dashboard-managed roles the app displays but never edits. */
   extraRoles?: string[];
   emails: string[];
@@ -53,6 +52,8 @@ function Body() {
   const [saving, setSaving] = React.useState(false);
   // category slug → live recipient config (workflow slug + roles).
   const [recip, setRecip] = React.useState<Record<string, RecipConfig>>({});
+  // The roles a notification can target — the workspace's live role options.
+  const [roleOptions, setRoleOptions] = React.useState<string[]>([]);
   // UI-only (API wired later): the workspace digest schedule + the conditions that
   // gate each notification. category slug → value.
   const [digest, setDigest] = React.useState<Record<string, DigestOption[]>>({});
@@ -113,6 +114,7 @@ function Body() {
         const map: Record<string, RecipConfig> = {};
         for (const c of data.configs as RecipConfig[]) if (c.category) map[c.category] = c;
         setRecip(map);
+        setRoleOptions(data.roleOptions ?? []);
       } catch {
         /* recipients are non-blocking */
       }
@@ -338,6 +340,7 @@ function Body() {
                         <td className="px-4 py-3 align-top">
                           <RecipientCell
                             roles={cfg?.roles ?? []}
+                            roleOptions={roleOptions}
                             extraRoles={cfg?.extraRoles ?? []}
                             emails={cfg?.emails ?? []}
                             editable={Boolean(cfg)}

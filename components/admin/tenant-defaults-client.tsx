@@ -4,9 +4,8 @@ import * as React from "react";
 import { toast } from "sonner";
 import { Building2 } from "lucide-react";
 import type { Pref } from "@/lib/server/preference-config";
-import type { PersonRole } from "@/lib/people";
 import { useAppState } from "@/components/providers";
-import { getTenant } from "@/lib/tenants";
+import { FORMAL_ROLES } from "@/lib/roles";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Switch } from "@/components/ui/switch";
@@ -45,15 +44,11 @@ interface Row {
 interface RecipConfig {
   slug: string;
   category: string;
-  roles: PersonRole[];
+  roles: string[];
   /** Dashboard-managed roles the app displays but never edits. */
   extraRoles?: string[];
   emails: string[];
 }
-
-// Formal project roles (their own Resources sections). Anyone else subscribed to the
-// project is a passive "outsider" (Watcher) — added only as an always-notify recipient.
-const FORMAL_ROLES = ["Project Manager", "Process Owner", "Project Sponsor", "Team Member"];
 
 // The full workspace roster (= SuprSend `users.list`, minus the admin sentinel): the
 // union of a project's members and the workspace people NOT on it — both returned by
@@ -74,14 +69,16 @@ export function TenantDefaultsClient() {
 }
 
 function Body() {
-  const { tenant, users, refreshUsers } = useAppState();
-  const project = getTenant(tenant);
+  const { tenant, users, refreshUsers, projects } = useAppState();
+  const projectName = projects.find((p) => p.tenantId === tenant)?.label ?? tenant;
   const [rows, setRows] = React.useState<Row[] | null>(null);
   const [original, setOriginal] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   // category slug → live recipient config (workflow slug + roles).
   const [recip, setRecip] = React.useState<Record<string, RecipConfig>>({});
+  // The roles a notification can target — the workspace's live role options.
+  const [roleOptions, setRoleOptions] = React.useState<string[]>([]);
   // UI-only (API wired later): per-project digest schedule + conditions that gate
   // each notification. A project's settings override the workspace defaults.
   // The admin-allowed cadence options (from the workspace; read-only here — the
@@ -214,7 +211,7 @@ function Body() {
   }
 
   // Override the project's recipient roles (the native `role` condition attribute).
-  async function saveTenantRoles(category: string, roles: PersonRole[]) {
+  async function saveTenantRoles(category: string, roles: string[]) {
     setTenantRoles((m) => ({ ...m, [category]: roles }));
     try {
       const res = await fetch("/api/admin/tenant-digest", {
@@ -365,6 +362,7 @@ function Body() {
         const map: Record<string, RecipConfig> = {};
         for (const c of data.configs as RecipConfig[]) if (c.category) map[c.category] = c;
         setRecip(map);
+        setRoleOptions(data.roleOptions ?? []);
       } catch {
         /* recipients are non-blocking */
       }
@@ -431,7 +429,7 @@ function Body() {
     <>
       <PageHeader
         title="Project notification settings"
-        description={`Notification defaults for ${project.fullName}. A user’s own choice still wins.`}
+        description={`Notification defaults for ${projectName}. A user’s own choice still wins.`}
         actions={
           rows !== null ? (
             <span className="text-xs text-muted-foreground">{saving ? "Saving…" : savedUp ? "All changes saved" : ""}</span>
@@ -573,7 +571,8 @@ function Body() {
                         </td>
                         <td className="px-4 py-3 align-top">
                           <RecipientCell
-                            roles={(tenantRoles[r.category] ?? []) as PersonRole[]}
+                            roles={tenantRoles[r.category] ?? []}
+                            roleOptions={roleOptions}
                             extraRoles={cfg?.extraRoles ?? []}
                             emails={cfg?.emails ?? []}
                             editable={active}

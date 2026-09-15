@@ -3,7 +3,6 @@
 // (e.g. "cost"); other attributes — notably "role" (the Recipients targeting) — are
 // PRESERVED untouched. Neutral module; only a TYPE is imported from the client cell.
 import type { Condition } from "@/components/admin/conditions-cell";
-import { ROLE_OPTIONS } from "@/lib/notifications";
 
 export interface SsConditionAttr {
   key: string;
@@ -51,8 +50,9 @@ export function mergeConditionsIntoAttrs(
 // attribute's default_value — the WORKSPACE default the workflow condition
 // ($category.properties.role) falls back to when a project has no tenant override.
 // Preserves the existing role declaration (choices/edit_policy) and every other
-// attribute (cost/include/except). Empty roles → default_value:null (SuprSend
-// rejects []), matching the include/except convention.
+// attribute (cost/include/except). A category with no role attribute yet gets the
+// chosen roles as its choices. Empty roles → default_value:null (SuprSend rejects
+// []), matching the include/except convention.
 export function mergeRoleIntoAttrs(
   existing: SsConditionAttr[] | null | undefined,
   roles: string[],
@@ -66,7 +66,7 @@ export function mergeRoleIntoAttrs(
     label: current?.label ?? "Role",
     value_type: "list_choice",
     edit_policy: current?.edit_policy ?? "editable",
-    choices: current?.choices ?? ROLE_OPTIONS.map((r) => ({ label: r, value: r })),
+    choices: current?.choices ?? roles.map((r) => ({ label: r, value: r })),
     default_value: roles.length ? roles : null,
   };
   return [...preserved, role];

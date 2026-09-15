@@ -3,27 +3,31 @@
 import * as React from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { getDefaultTenant, type TenantId } from "@/lib/tenants";
-import type { WorkspaceSlug } from "@/lib/workspaces";
+import type { WorkspaceInfo, WorkspaceSlug } from "@/lib/workspaces";
 import type { WorkUser } from "@/lib/server/users";
 
 interface AppState {
+  /** Workspaces the app can use — read live from SuprSend (see listWorkspaces). */
+  workspaces: WorkspaceInfo[];
   /** Active customer workspace. */
   workspace: WorkspaceSlug;
+  /** The active workspace's name / logo / colour; null when none is connected. */
+  activeWorkspace: WorkspaceInfo | null;
   setWorkspace: (slug: WorkspaceSlug) => void;
-  /** Active project (tenant) inside the workspace. Drives brand + scoping. */
-  tenant: TenantId;
-  setTenant: (id: TenantId) => void;
+  /** Active project (tenant) inside the workspace. Drives brand + scoping. "" when
+   * the workspace has no projects. */
+  tenant: string;
+  setTenant: (id: string) => void;
   /** The employee currently being impersonated. The sentinel "admin" = the
    * workspace admin (overseer, not a project member). */
   actorId: string;
   setActorId: (id: string) => void;
   /** Impersonate a specific person across the WHOLE app: switches the customer +
    * project to theirs and sets them as the actor, atomically. */
-  viewAs: (userId: string, ws: WorkspaceSlug, tenant: TenantId) => void;
+  viewAs: (userId: string, ws: WorkspaceSlug, tenant: string) => void;
   /** Role of the current viewer on the active project — drives Projects-view
-   * gating. "Admin" for the admin sentinel; else the member's role (e.g.
-   * "Project Manager", "Team Member"); "" while the roster loads. */
+   * gating. "Admin" for the admin sentinel; else the member's role on the project;
+   * "" while the roster loads. */
   actorRole: string;
   /** Live SuprSend subscribers for the active tenant (the "viewing as" + Send-test roster). */
   users: WorkUser[];
@@ -71,17 +75,24 @@ function writeCookie(key: string, value: string) {
 
 export function AppProviders({
   children,
+  workspaces,
   initialWorkspace,
   initialTenant,
   initialActor,
 }: {
   children: React.ReactNode;
+  workspaces: WorkspaceInfo[];
   initialWorkspace: WorkspaceSlug;
-  initialTenant: TenantId;
+  initialTenant: string;
   initialActor: string;
 }) {
-  const [workspace, setWs] = React.useState<WorkspaceSlug>(initialWorkspace);
-  const [tenant, setTen] = React.useState<TenantId>(initialTenant);
+  const [workspace, setWs] = React.useState<WorkspaceSlug>(() => {
+    // Pin the server's pick in the cookie before any child fetches, so API routes
+    // resolve the same workspace the page shows.
+    if (typeof document !== "undefined" && initialWorkspace) writeCookie("ws", initialWorkspace);
+    return initialWorkspace;
+  });
+  const [tenant, setTen] = React.useState<string>(initialTenant);
   const [actorId, setAct] = React.useState<string>(initialActor);
   const [users, setUsers] = React.useState<WorkUser[]>([]);
   const [usersLoading, setUsersLoading] = React.useState(true);
@@ -148,7 +159,18 @@ export function AppProviders({
     void refreshProjects();
   }, [workspace, refreshProjects]);
 
-  const setTenant = React.useCallback((id: TenantId) => {
+  // Keep the active project pointed at one that exists in this workspace: the first
+  // live project when the current one is gone (or unset), "" when there are none.
+  React.useEffect(() => {
+    if (!projectsLoaded || projects.some((p) => p.tenantId === tenant)) return;
+    const next = projects[0]?.tenantId ?? "";
+    if (next === tenant) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTen(next);
+    writeCookie("tenant", next);
+  }, [projectsLoaded, projects, tenant]);
+
+  const setTenant = React.useCallback((id: string) => {
     setTen(id);
     writeCookie("tenant", id);
     // The new project has a different roster — show loading + clear the actor;
@@ -161,7 +183,7 @@ export function AppProviders({
   // Impersonate a specific person anywhere in the app: switch to their customer +
   // project and set them as the actor in one go. refreshUsers (fired by the
   // ws/tenant change) keeps this actor because they're in the new roster.
-  const viewAs = React.useCallback((userId: string, ws: WorkspaceSlug, ten: TenantId) => {
+  const viewAs = React.useCallback((userId: string, ws: WorkspaceSlug, ten: string) => {
     setWs(ws);
     writeCookie("ws", ws);
     setTen(ten);
@@ -174,20 +196,16 @@ export function AppProviders({
   const setWorkspace = React.useCallback((slug: WorkspaceSlug) => {
     setWs(slug);
     writeCookie("ws", slug);
-    // Switching customer changes the available projects — jump to that
-    // workspace's first project. Keep the Admin overseer if active; otherwise
-    // reset the impersonated actor (refreshUsers resolves it to the first member).
-    const nextTenant = getDefaultTenant(slug).id;
-    setTen(nextTenant);
-    writeCookie("tenant", nextTenant);
+    // Switching customer changes the available projects — clear the project until
+    // the new workspace's projects load (then its first one is picked). Keep the
+    // Admin overseer if active; otherwise reset the impersonated actor.
+    setTen("");
+    writeCookie("tenant", "");
     setUsersLoading(true);
     setAct((prev) => (prev === ADMIN_ACTOR ? prev : ""));
   }, []);
 
-  // Trust the active tenant (it's written together with the workspace, and reset on
-  // workspace switch), falling back to the workspace default only when empty. This
-  // allows newly-created (non-seeded) projects, which aren't in the static registry.
-  const activeTenant: TenantId = (tenant || getDefaultTenant(workspace).id) as TenantId;
+  const activeWorkspace = workspaces.find((w) => w.slug === workspace) ?? null;
 
   // The current viewer's role on the active project (Projects-view gating).
   const actorRole =
@@ -199,9 +217,11 @@ export function AppProviders({
   return (
     <AppContext.Provider
       value={{
+        workspaces,
         workspace,
+        activeWorkspace,
         setWorkspace,
-        tenant: activeTenant,
+        tenant,
         setTenant,
         actorId,
         setActorId,

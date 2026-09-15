@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { errMsg } from "@/lib/server/http";
 import { getActiveWorkspace } from "@/lib/server/workspace";
 import { listUsers, getProjectRoles, listProjects } from "@/lib/server/users";
+import { SINGLE_ROLES } from "@/lib/roles";
 
 // Projects + people for the "Viewing as" switcher and the Projects list — sourced
 // from SuprSend: the project objects that EXIST in this workspace, and each object's
@@ -17,9 +18,8 @@ export async function GET() {
       tenants.map(async (t) => {
         const roles = await getProjectRoles(ws, t.id);
         const members = Object.keys(roles).map((id) => ({ id, name: nameOf(id), role: roles[id] }));
-        // Stable order: PM, Process Owner, Sponsor, then Team Members by name.
-        const rank = (r: string) =>
-          r === "Project Manager" ? 0 : r === "Process Owner" ? 1 : r === "Project Sponsor" ? 2 : 3;
+        // Stable order: PM, Process Owner, Sponsor, then everyone else by name.
+        const rank = (r: string) => (SINGLE_ROLES.includes(r) ? SINGLE_ROLES.indexOf(r) : SINGLE_ROLES.length);
         members.sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));
         return { tenantId: t.id, label: t.name, members };
       }),

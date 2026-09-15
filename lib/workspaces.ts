@@ -1,61 +1,40 @@
-// Workspace registry — one workspace per CUSTOMER (the companies that run
-// Keystone). This is Keystone's model: each customer is its own isolated SuprSend
-// workspace with its own keys. The account-level Service Token selects the
-// workspace by URL path on the Management API; the per-workspace key/secret +
-// signing key drive the node SDK and the embedded editor.
+// Workspaces — one SuprSend workspace per CUSTOMER (the companies that run Keystone).
+// Each customer is its own isolated workspace with its own keys.
 //
-// Projects live INSIDE a workspace as tenants — see lib/tenants.ts. The app
-// switches BOTH the workspace (customer) and the tenant (project).
-//
-// To add a customer: add an entry here, add the matching env vars (prefix =
-// `envPrefix(ws)` in lib/server/workspace.ts), and add its projects in
-// lib/tenants.ts. Brand colour/logo here is the render-time default.
+// Nothing about a workspace is hardcoded. The app shows every workspace in the SuprSend
+// account whose Workspace Key is in the env (SUPRSEND_<SLUG>_WORKSPACE_KEY), with its
+// name read from the Management API and its logo/colour from the workspace's default
+// brand — see listWorkspaces() in lib/server/workspace.ts. Projects live INSIDE a
+// workspace as tenants and are read live too.
 
-export type WorkspaceSlug = "acme" | "globex";
+/** The env-var segment that names a workspace: SUPRSEND_ACME_WORKSPACE_KEY → "acme". */
+export type WorkspaceSlug = string;
 
+/** Server-side handle for a workspace — enough to find its keys in the env. */
 export interface Workspace {
   slug: WorkspaceSlug;
-  /** Short customer name shown in the switcher. */
+}
+
+/** What the UI shows for a workspace — all read live from SuprSend. */
+export interface WorkspaceInfo extends Workspace {
+  /** Workspace name in the SuprSend account. */
   label: string;
-  /** Full legal name for headers / empty states. */
-  fullName: string;
-  /** Single-letter mark for the avatar tile (fallback when the logo can't load). */
-  initial: string;
-  /** Customer logo (served from /public/brands). */
+  /** Logo from the workspace's default brand ("" when unset). */
   logo: string;
-  /** Customer brand accent — the workspace-level identity colour. */
+  /** Primary colour from the workspace's default brand ("" when unset). */
   accent: string;
-  /** Foreground that reads on the accent. */
-  accentForeground: string;
 }
 
-export const WORKSPACES: Workspace[] = [
-  {
-    slug: "acme",
-    label: "Acme",
-    fullName: "Acme Corporation",
-    initial: "Ac",
-    logo: "/brands/acme.svg",
-    accent: "#2563EB",
-    accentForeground: "#ffffff",
-  },
-  {
-    slug: "globex",
-    label: "Globex",
-    fullName: "Globex Corporation",
-    initial: "Gx",
-    logo: "/brands/globex.svg",
-    accent: "#0F766E",
-    accentForeground: "#ffffff",
-  },
-];
-
-export const DEFAULT_WORKSPACE: WorkspaceSlug = "acme";
-
-export function getWorkspace(slug?: string | null): Workspace {
-  return WORKSPACES.find((w) => w.slug === slug) ?? WORKSPACES[0];
+export function getWorkspace(slug: WorkspaceSlug): Workspace {
+  return { slug };
 }
 
-export function isWorkspaceSlug(value?: string | null): value is WorkspaceSlug {
-  return WORKSPACES.some((w) => w.slug === value);
+/** Every workspace with a Workspace Key set in the env, sorted by slug. */
+export function workspaceKeysFromEnv(env: Record<string, string | undefined>): { slug: WorkspaceSlug; key: string }[] {
+  const out: { slug: WorkspaceSlug; key: string }[] = [];
+  for (const [name, value] of Object.entries(env)) {
+    const m = /^SUPRSEND_([A-Z0-9_]+)_WORKSPACE_KEY$/.exec(name);
+    if (m && value) out.push({ slug: m[1].toLowerCase().replace(/_/g, "-"), key: value });
+  }
+  return out.sort((a, b) => a.slug.localeCompare(b.slug));
 }

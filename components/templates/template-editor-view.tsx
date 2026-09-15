@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { ChevronLeft, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppState } from "@/components/providers";
-import { getTenant } from "@/lib/tenants";
 
 // Browser-only SDK → load client-side only.
 const EditorMount = dynamic(() => import("@/components/templates/editor-mount"), {
@@ -27,8 +26,9 @@ export function TemplateEditorView({
    *  (required by SuprSend) so test sends don't 400. */
   category: string;
 }) {
-  const { tenant } = useAppState();
-  const accent = getTenant(tenant).accent;
+  const { tenant, activeWorkspace } = useAppState();
+  // Editor accent = the customer's brand colour (Administer → Brand); "" leaves the editor's own theme.
+  const accent = activeWorkspace?.accent ?? "";
   const [token, setToken] = React.useState<{ accessToken: string; workspaceUid: string; variantId: string; recipient: string } | null>(null);
   // Live channel set — re-fetched client-side (no-store) so a channel added moments
   // ago (e.g. via a workflow edit) always appears as a tab, never a stale payload.

@@ -3,10 +3,9 @@ import { errMsg, isSlug, INVALID_SLUG } from "@/lib/server/http";
 import { getActiveTenant, getActiveWorkspace } from "@/lib/server/workspace";
 import { triggerWorkflow, trackEvent, triggerUsers } from "@/lib/server/hub";
 import { getWorkflowTriggerData, getWorkflow } from "@/lib/suprsend-mgmt";
-import { getUser } from "@/lib/server/users";
-import { getTenant } from "@/lib/tenants";
+import { getUser, getProjectRoles, listProjects, listUsers } from "@/lib/server/users";
 import { getNotifConfig } from "@/lib/server/notif-recipients";
-import { getProjectPeople, getProjectPmName } from "@/lib/server/workspace-data";
+import { PROJECT_MANAGER } from "@/lib/roles";
 
 // Sentinel recipient for "send to the whole project" → role-filtered fan-out.
 const WHOLE_PROJECT = "__project__";
@@ -32,23 +31,33 @@ export async function POST(req: Request) {
     const wfBody = (wf?.body ?? {}) as { trigger_type?: string; trigger_events?: string[] };
     const isEvent = wfBody.trigger_type === "event";
     const eventName = wfBody.trigger_events?.[0];
-    const base = await getWorkflowTriggerData(ws.slug, workflow_slug);
+
+    // The project's members and roles, read live from the project object.
+    const [base, roles, users] = await Promise.all([
+      getWorkflowTriggerData(ws.slug, workflow_slug),
+      tenant ? getProjectRoles(ws, tenant) : Promise.resolve({} as Record<string, string>),
+      listUsers(ws),
+    ]);
+    const nameOf = (id: string) => users.find((u) => u.distinctId === id)?.name ?? id;
+    // new_pm_name (for Project Assigned conditional copy) = the project's current PM.
+    const pmId = Object.keys(roles).find((id) => roles[id] === PROJECT_MANAGER);
+    const pmName = pmId ? nameOf(pmId) : "";
 
     // Whole-project mode: ROLE-FILTERED fan-out. The notification declares which
-    // roles it targets (PRD recipients); we resolve the project members with those
-    // roles (the project object's subscribers) and notify only them. Per-recipient
-    // preferences still gate each send.
+    // roles it targets; we resolve the project members with those roles (the project
+    // object's subscribers) and notify only them. Per-recipient preferences still
+    // gate each send.
     if (employee_id === WHOLE_PROJECT) {
       // Recipient roles come from the LIVE workflow config (recip: tags), keyed by
       // workflow slug — so admin recipient-type edits take effect immediately.
       const cfg = await getNotifConfig(ws.slug);
-      const roles = cfg.find((c) => c.slug === workflow_slug)?.roles ?? [];
-      const targets = getProjectPeople(tenant).filter((p) => roles.includes(p.role));
+      const targetRoles = cfg.find((c) => c.slug === workflow_slug)?.roles ?? [];
+      const targets = Object.entries(roles)
+        .filter(([, role]) => targetRoles.includes(role))
+        .map(([id, role]) => ({ id, role, name: nameOf(id) }));
       if (targets.length === 0) {
         return NextResponse.json({ ok: false, error: "No project members match this notification's recipient roles." }, { status: 400 });
       }
-      // new_pm_name (for Project Assigned conditional copy) = the project's current PM (store).
-      const pmName = getProjectPmName(tenant);
       const payload = { ...base, new_pm_name: pmName, ...(data ?? {}) };
       if (isEvent && eventName) {
         // Event workflow → track the event for each target so SuprSend runs it.
@@ -58,16 +67,16 @@ export async function POST(req: Request) {
       } else {
         await triggerUsers(ws, workflow_slug, targets.map((t) => t.id), payload, tenant);
       }
-      const proj = getTenant(tenant);
+      const projectName = (await listProjects(ws)).find((p) => p.id === tenant)?.name ?? tenant;
       const roleList = [...new Set(targets.map((t) => t.role))].join(", ");
-      return NextResponse.json({ ok: true, recipient: `${targets.length} on ${proj.label} (${roleList})`, fanout: true });
+      return NextResponse.json({ ok: true, recipient: `${targets.length} on ${projectName} (${roleList})`, fanout: true });
     }
     const emp = await getUser(ws, employee_id);
     if (!emp) {
       return NextResponse.json({ ok: false, error: "Unknown employee for this tenant." }, { status: 400 });
     }
     if (!emp.email) {
-      return NextResponse.json({ ok: false, error: `${emp.name} has no email — add one in the Users tab.` }, { status: 400 });
+      return NextResponse.json({ ok: false, error: `${emp.name} has no email — add one in the SuprSend dashboard.` }, { status: 400 });
     }
 
     // Single recipient. Build a complete payload (workflow sample data + employee
@@ -76,8 +85,8 @@ export async function POST(req: Request) {
     const payload = {
       ...base,
       employee_name: emp.name,
-      role: emp.role ?? "",
-      new_pm_name: getProjectPmName(tenant),
+      role: roles[emp.distinctId] ?? "",
+      new_pm_name: pmName,
       ...(data ?? {}),
     };
 

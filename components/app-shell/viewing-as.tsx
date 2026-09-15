@@ -12,8 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAppState, ADMIN_ACTOR } from "@/components/providers";
-import type { TenantId } from "@/lib/tenants";
-import type { WorkspaceSlug } from "@/lib/workspaces";
 
 // Every person you can view as — sourced LIVE from SuprSend (each project object's
 // subscriptions) and scoped to the ACTIVE customer, via the shared app context so it
@@ -72,7 +70,7 @@ export function ViewingAs({ includeAdmin = false }: { includeAdmin?: boolean } =
                   } else {
                     // Different project (or not on a project page) → switch to it
                     // and show the project listing.
-                    viewAs(m.id, workspace as WorkspaceSlug, p.tenantId as TenantId);
+                    viewAs(m.id, workspace, p.tenantId);
                     router.push("/project");
                   }
                 }}

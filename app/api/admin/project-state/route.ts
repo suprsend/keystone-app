@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { errMsg } from "@/lib/server/http";
+import { errMsg, projectLink } from "@/lib/server/http";
 import { getActiveWorkspace, getActiveTenant } from "@/lib/server/workspace";
 import { triggerObjectWorkflow } from "@/lib/server/hub";
 import { getProjectState, setProjectState, getProjectCost, PROJECT_STATES } from "@/lib/server/users";
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           objectId: projectId,
           data: {
             project_id: projectId,
-            project_link: `https://app.keystone.com/projects/${projectId}`,
+            project_link: projectLink(req, projectId),
             except,
             ...(cost !== null ? { cost } : {}),
           },

@@ -145,6 +145,23 @@ export async function getPreferenceConfig(
   return out;
 }
 
+/** The roles notifications can target: the `role` choices declared on the workspace's
+ * preference categories, in first-seen order. */
+export async function getRoleOptions(ws: WorkspaceSlug): Promise<string[]> {
+  if (!hasWorkspaceKeys(getWorkspace(ws))) return [];
+  const doc = await readDoc(ws);
+  const seen = new Set<string>();
+  for (const root of doc.root_categories ?? []) {
+    for (const sec of root.sections ?? []) {
+      for (const c of sec.categories ?? []) {
+        const role = (c.properties ?? c.condition_attributes ?? []).find((a) => a.key === "role");
+        for (const choice of role?.choices ?? []) seen.add(choice.value);
+      }
+    }
+  }
+  return [...seen];
+}
+
 /** Set a category's digest_schedule (workspace default cadence options) and commit.
  * `options` empty → digest_schedule:null (remove). Read the live tree, set by slug,
  * POST it back so the rest of the tree is preserved. */

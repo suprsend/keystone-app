@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { errMsg } from "@/lib/server/http";
 import { getActiveWorkspace } from "@/lib/server/workspace";
 import { createProject, listProjects } from "@/lib/server/users";
+import { PROJECT_MANAGER } from "@/lib/roles";
 
 // Create a project = a SuprSend object (membership) + tenant (brand) + role
 // subscriptions, all in the active customer. Returns the new id so the UI can route
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     const trimmed = (name ?? "").trim();
     if (!trimmed) return NextResponse.json({ ok: false, error: "Project name is required." }, { status: 400 });
     const mem = Array.isArray(members) ? members.filter((m) => m?.distinctId && m?.role) : [];
-    if (!mem.some((m) => m.role === "Project Manager")) {
+    if (!mem.some((m) => m.role === PROJECT_MANAGER)) {
       return NextResponse.json({ ok: false, error: "A Project Manager is required." }, { status: 400 });
     }
 

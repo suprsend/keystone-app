@@ -11,8 +11,8 @@
     "due_date_display": "Jul 15, 2026",
     "project_link": "https://app.keystone.example/projects/demo"
   },
-  "recipient_distinct_id": "u_dana_carter",
+  "recipient_distinct_id": null,
   "recipient_object": null,
   "recipient_sub_type": "user",
-  "tenant_id": "acme-aero"
+  "tenant_id": null
 }

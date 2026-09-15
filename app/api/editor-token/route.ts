@@ -3,6 +3,7 @@ import { errMsg } from "@/lib/server/http";
 import jwt from "jsonwebtoken";
 import { getActiveTenant, getActiveWorkspace, getWorkspaceSecrets } from "@/lib/server/workspace";
 import { getProjectRoles } from "@/lib/server/users";
+import { PROJECT_MANAGER } from "@/lib/roles";
 
 // ES256-signed JWT for @suprsend/react-editor (accessToken prop).
 // The embedded editor ALWAYS requires a real tenant_id (verified: it 400s with
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     // {{$recipient.*}}. Preview-only — does NOT affect how workflows are sent.
     const roles = await getProjectRoles(ws, tenant);
     const memberIds = Object.keys(roles);
-    const pmId = memberIds.find((id) => roles[id] === "Project Manager");
+    const pmId = memberIds.find((id) => roles[id] === PROJECT_MANAGER);
     const recipient = url.searchParams.get("recipient") || pmId || memberIds[0] || "preview-user";
     // No per-tenant template variants exist on staging — every template has only its
     // MASTER variant (id "default", tenant_id null). So edit the master for everyone:

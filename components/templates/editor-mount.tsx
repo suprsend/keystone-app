@@ -45,7 +45,7 @@ export default function EditorMount({
       mode="live"
       accessToken={accessToken}
       recipientDistinctId={recipient}
-      themeOverrides={{ primary }}
+      themeOverrides={primary ? { primary } : undefined}
     >
       <TemplateEditor />
     </SuprSendTemplateProvider>
