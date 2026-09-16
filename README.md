@@ -5,7 +5,7 @@ project-management product. It covers an admin notification catalog, message tem
 per-person preferences, digests, branding, and an in-app inbox.
 
 This repo is the code companion to the guide
-**[Modelling customers in B2B](https://docs.suprsend.com/docs/modelling-customers-b2b)**. The guide explains
+**[Designing notifications for multi-tenant B2B applications](https://docs.suprsend.com/docs/guides/modelling-customers-b2b)**. The guide explains
 the concepts. This app shows them in code. Every screen makes real SuprSend API calls.
 
 **What you'll set up.** Each Keystone customer is a SuprSend workspace. Setup creates two, **Acme** and
@@ -27,7 +27,7 @@ SuprSend and create projects in the app.
 
 ## Getting started
 
-**You need:** Node.js 20+ and a SuprSend account.
+**You need:** Node.js 20.9+ and a SuprSend account.
 
 ### 1. Install
 
@@ -83,9 +83,10 @@ npm run push:assets
 
 After this, SuprSend holds the live copy. Changes you make in the dashboard show up in the app.
 
-> **Pushing again overwrites templates.** If you edited a template in the SuprSend editor, pull it first:
-> `npx suprsend template pull -w acme`. Workflows are safe to push again: they read their tunable values
-> (roles, cost threshold) from the preference categories.
+> **Pushing again overwrites dashboard edits.** Template edits and the defaults set in **Administer →
+> Preferences** go back to the repo files. Pull them first: `npx suprsend template pull -w acme` (also
+> `category` and `workflow`). Workflows hold no tunable values: they read roles and the cost threshold from
+> the preference categories.
 
 ### 5. Add people in SuprSend
 
@@ -156,7 +157,7 @@ Keystone is used by several **customers**. Each customer runs **projects**, and 
 | **A person's settings** | **User preferences** | One person's choices, for one project |
 
 **A project is two SuprSend records.** **+ Project** creates a tenant (brand and preferences) and an object
-of type `project` (the team) in one call. See `app/api/admin/create-project/route.ts`.
+of type `project` (the team) in one request. See `app/api/admin/create-project/route.ts`.
 
 **Preferences resolve in three layers.** The more specific layer wins.
 
@@ -200,23 +201,26 @@ and template editor) talk to SuprSend directly, with a short-lived token this ap
 
 | Surface | Host / package | Auth | Used for |
 |---|---|---|---|
-| **Node SDK** | `@suprsend/node-sdk` → `hub.suprsend.com` | Workspace key + secret | Projects, members, roles, comments, tasks, project state, sending notifications, Logs |
-| **Management API** | `management-api.suprsend.com` | `Authorization: ServiceToken <token>` | Workspace list, Message Templates, Preferences |
-| **Hub REST (signed)** | `hub.suprsend.com` | HMAC-SHA256 signature per request | Project Settings and My / User Settings |
+| **Node SDK** | `@suprsend/node-sdk` → `hub.suprsend.com` | Workspace key + secret | Projects, members, roles, comments, tasks, project state and cost, brand, sending notifications, Logs |
+| **Management API** | `management-api.suprsend.com` | `Authorization: ServiceToken <token>` | Workspace list, Message Templates, Preferences (categories, and recipient tags on workflows) |
+| **Hub REST (signed)** | `hub.suprsend.com` | HMAC-SHA256 signature per request, with the workspace key + secret | Project Settings, plus digest and cost in My / User Settings |
+| **Hub REST (user token)** | `hub.suprsend.com` | Public key + ES256 token signed by this app | On/off, channels and condition values in My / User Settings |
 | **React SDK** | `@suprsend/react`, `@suprsend/react-editor` | ES256 token signed by this app | Inbox bell, template editor |
 
 **Endpoints**
 
 - **Management API**: `management-api.suprsend.com/{version}/{WORKSPACE_KEY}/{resource}`
   - Workspaces (v1): `GET v1/workspace/`, account-level
-  - Templates (v2): `GET/POST/DELETE v2/{ws}/template/…`
+  - Templates (v2): `GET/DELETE v2/{ws}/template/…`
   - Workflows (v1): `GET/POST v1/{ws}/workflow/…`
   - Category defaults (v1): `GET/POST v1/{ws}/preference_category/`
-- **Hub REST (signed)**:
-  - Project preferences: `GET/PATCH /v1/tenant/{tenant}/category/`
-  - Signature: `Authorization: <workspaceKey>:<base64 HMAC-SHA256>` over `verb\ncontentMd5\ncontentType\nDate\npath`
-  - User preferences: `GET/PATCH hub/v2/subscriber/{distinct_id}/category/?tenant_id={tenant}`, with
-    `Authorization: <publicApiKey>` and `x-ss-signature: <ES256 token>`
+- **Hub REST (signed)**: `Authorization: <workspaceKey>:<base64 HMAC-SHA256>` over `verb\ncontentMd5\ncontentType\nDate\npath`
+  - Project on/off and channels: `GET /v1/tenant/{tenant}/category/`, `PATCH /v1/tenant/{tenant}/category/{category}/`
+  - Project digest, recipient roles, except, include, cost: `GET/PATCH /v1/tenant/{tenant}/preference/category/{category}/`
+  - A person's digest and cost: `GET/PATCH /v1/user/{distinct_id}/preference/category/{category}/?tenant_id={tenant}`
+- **Hub REST (user token)**: `Authorization: <publicApiKey>` and `x-ss-signature: <ES256 token>` (valid 10 minutes)
+  - A person's on/off, channels and condition values: `GET /v2/subscriber/{distinct_id}/category/?tenant_id={tenant}`,
+    `PATCH /v2/subscriber/{distinct_id}/category/{category}/?tenant_id={tenant}`
 - **React SDK**: tokens expire after 1 hour
   - Inbox (`/api/subscriber-token`): `entity_type: subscriber`, scoped to the active project
   - Editor (`/api/editor-token`): signed with the workspace signing key (`kid` = `SIGNING_KEY_UID`)
@@ -236,10 +240,10 @@ and template editor) talk to SuprSend directly, with a short-lived token this ap
 | `NEXT_PUBLIC_SUPRSEND_<WS>_PUBLIC_KEY` | Workspace | Inbox and user preferences |
 | `DEMO_PASSWORD` | Deployment | Password for a shared demo. Leave empty locally |
 | `SUPRSEND_MGMNT_URL` | Optional | Management API host (default `management-api.suprsend.com`) |
-| `SUPRSEND_HOST` | Optional | Host for the signed preference calls (default `hub.suprsend.com`) |
+| `SUPRSEND_PREF_MGMNT_URL` | Optional | Host for the preference category calls only (default `SUPRSEND_MGMNT_URL`) |
+| `SUPRSEND_HOST` | Optional | Host for the Hub REST preference calls (default `hub.suprsend.com`) |
 
-`.env.local` is gitignored. A shorter screen-by-screen API list is in
-[`docs/architecture-apis-by-screen.md`](docs/architecture-apis-by-screen.md).
+`.env.local` is gitignored.
 
 ### Repo vs. your account
 
@@ -296,9 +300,9 @@ The header has two switchers:
 |---|---|---|---|
 | **Overview** | Comment (with @mentions), add and complete tasks | Any member | `/api/admin/project-comments` sends `comment-added`, or `tagged-on-project` for a mention. `/api/admin/project-tasks` sends `tasks-upcoming` on add, `task-completed` on complete |
 | **Resources** | Add and remove people, set roles | Admin or PM | `/api/admin/project-members` → Node SDK object subscriptions |
-| **Notifications → Project Settings** | The project's defaults | Admin or PM | `/api/admin/tenant-preferences` → Hub REST (signed) |
-| **Notifications → User Settings** | Another member's choices | Admin or PM | `/api/user-preferences` → Hub REST |
-| **Notifications → My Settings** | Your own choices | Members | `/api/user-preferences` → Hub REST |
+| **Notifications → Project Settings** | The project's defaults | Admin or PM | `/api/admin/tenant-preferences` and `/api/admin/tenant-digest` → Hub REST (signed). `/api/admin/notification-recipients` → Management API |
+| **Notifications → User Settings** | Another member's choices | Admin or PM | `/api/user-preferences` → Hub REST (user token). `/api/user-digest` → Hub REST (signed) |
+| **Notifications → My Settings** | Your own choices | Members | `/api/user-preferences` → Hub REST (user token). `/api/user-digest` → Hub REST (signed) |
 | **State** | In-flight or Paused | Admin or PM | `/api/admin/project-state` sends `project-started` or `project-paused` |
 | **Total cost** | Set the project's cost | Admin or PM | `/api/admin/project-cost` sends `budget-alert` |
 
@@ -308,7 +312,8 @@ Each notification includes `project_link`, a link to the project's page in this 
 
 The workspace defaults for each category: on or off, channels, recipient roles, digest, and conditions such
 as the Budget Alert cost threshold. Calls `/api/admin/preference-config` and
-`/api/admin/notification-recipients` (Management API).
+`/api/admin/notification-recipients` (Management API). Saving recipient roles also commits the live workflow
+again, with `recip:<role>` tags.
 
 ### Administer → Message Templates: `/admin/templates`
 
@@ -317,8 +322,8 @@ Each notification's content per channel. List, edit in SuprSend's embedded edito
 
 ### Administer → Brand: `/admin/brand`
 
-The workspace brand (`{{$brand.*}}`): logo, colours, links. Projects use it unless they override it. The
-logo and colour also appear in the Customer switcher. Calls `/api/brand` → Node SDK `tenants.get/upsert("default")`.
+The workspace brand (`{{$brand.*}}`): logo, colours, links. **+ Project** copies it onto the new project, so
+later edits here don't change existing projects. The logo and colour also appear in the Customer switcher. Calls `/api/brand` → Node SDK `tenants.get/upsert("default")`.
 
 ### Administer → Logs: `/admin/executions`
 
@@ -348,7 +353,6 @@ lib/
   workspaces.ts   Finds workspaces from the keys in the env
 scripts/          Workspace creation (create-workspaces.mjs) + asset push (push-assets.mjs)
 suprsend/         Preference categories, templates and workflows in the SuprSend CLI layout
-docs/             Screen-by-screen API list
 proxy.ts          Password gate for a shared demo (DEMO_PASSWORD)
 ```
 
@@ -360,7 +364,7 @@ proxy.ts          Password gate for a shared demo (DEMO_PASSWORD)
 | `npm run build` / `npm start` | Production build / run |
 | `npm run lint` / `typecheck` / `test` | ESLint / TypeScript / Vitest |
 | `npm run create-workspaces` | Create Acme and Globex and fill their Workspace Keys. `-- --dry-run` to preview |
-| `npm run push:assets` | Push `suprsend/` to both workspaces. `-- --dry-run` to preview, `-- --draft` to save without publishing |
+| `npm run push:assets` | Push `suprsend/` to both workspaces, or only the ones you name (`-- acme`). `-- --dry-run` to preview, `-- --draft` to save without publishing |
 
 ## Dry run or normal run
 
@@ -372,8 +376,9 @@ proxy.ts          Password gate for a shared demo (DEMO_PASSWORD)
 | `npm run create-workspaces` | You're not sure whether Acme and Globex already exist, or what it will add to `.env.local` | First-time setup. Running it again is safe: it reuses existing workspaces and only adds missing lines |
 | `npm run push:assets` | The workspaces are already set up or shared with others | First-time setup, or you want SuprSend to match the repo files |
 
-**Pushing again overwrites templates.** Edits made in the SuprSend editor are replaced by the repo files.
-Pull them first with `npx suprsend template pull -w acme`, then push. To stage changes without
+**Pushing again overwrites dashboard edits.** Template edits and the defaults set in **Administer → Preferences**
+are replaced by the repo files. Pull them first with `npx suprsend template pull -w acme` (also `category` and
+`workflow`), then push. To stage changes without
 publishing, use `-- --draft`.
 
 **Rule of thumb:** fresh setup, run normally. Anything already set up, dry run first.
